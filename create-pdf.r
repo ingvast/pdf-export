@@ -7,12 +7,14 @@ pdf-bindings: make object! [
     s: 's
     R: 'R
     m: 'm
+    v: 'v
     stream: 'stream
     endstream: 'endstream
     re: 're
     h: 'h
     |: '|
     Tf: 'Tf
+    dict: 'dict
 ]
 
 stream: 'stream
@@ -22,28 +24,28 @@ endstream: 'endstream
 ;<</Type /Catalog /Pages 2 0 R>>
 ;endobj
 def: [
-  catalog [
-	context [
-	    Type: 'Catalog
-	    Pages: Xs pages 
+  'catalog [
+	dict [
+	    /Type 'Catalog
+	    /Pages Xs pages 
 	]
     ]
 ;2 0 obj
 ;<</Type /Pages /Kids [3 0 R 4 0 R] /Count 2>>
 ;endobj
-    pages [
-	context [
-	    Type: 'Pages
-	    Kids: [ Xs mbox Xs cont ]
-	    Count: 2
+    'pages [
+	dict [
+	    /Type 'Pages
+	    /Kids [ Xs mbox Xs cont ]
+	    /Count 2
 	]
     ]
 ;3 0 obj
 ;<</MediaBox [0 0 800 500]>>
 ;endobj
-    mbox [
-	context [
-	    MediaBox: [0 0 800 500]
+    'mbox [
+	dict [
+	    /MediaBox [0 0 800 500]
 	]
     ]
 ;4 0 obj
@@ -51,25 +53,109 @@ def: [
 ;/Parent 2 0 R
 ;/Contents 5 0 R >>
 ;endobj
-    cont [
-	context [
-	    Length: none
+    'cont [
+	'dict [
+	    /Length none
 	]
 	stream 
-	[ 175 720 m 500 | 300 800 400 600 v 100 650 50 75 re h S ]
+	175 720 m 500 | 300 800 400 600 v 100 650 50 75 re h S 
 	endstream
     ]
 ]
 
 Xs: func [ 'arg ][
-    func [] [
-	reduce [ (index? find d arg) + 1 / 2 0 'R]
+    o: context [ 
+	name: arg
+	f: func [] [
+	    reduce [ (index? find d to-lit-word name) + 1 / 2 0 'R]
+	]
+    ]
+    get in o 'f
+]
+
+do-functions: func [ blk /local rslt ret ][
+    rslt: copy []
+    while [ not empty? blk ] [
+	if all [ word? first blk any-function? get first blk ]
+	[
+	    change blk get first blk ]
+	either any-function? first blk
+	[
+	    ret: do/next blk
+	    unless unset? first ret [
+		append rslt first ret
+	    ]
+	    blk: second ret
+	][
+	    either block? first blk
+	    [
+		append/only rslt do-functions first+ blk
+	    ][
+		append rslt first+ blk
+	    ]
+	]
+    ]
+    rslt
+]
+
+convert-strings: func [ blk ][
+    forall blk [
+	case [
+	    block? first blk [
+		convert-strings first blk
+	    ]
+	    string? blk [
+		change blk rejoin [ "(" blk ")" ]
+	    ]
+	]
     ]
 ]
 
+Z: func [ msg con][ print rejoin [ msg ": " mold con ] con]
+
+to-pdf-string: func [ blk /local str ] [
+    str: copy ""
+    print [ type? blk copy/part _: mold blk any [find _ newline tail _ ]]
+    forall blk [
+	if new-line? blk [ if all [ not empty? str #" " = last str ] [ clear back tail str ] append str newline ]
+	case [
+	    block? first blk [
+		append str rejoin [ "[ " to-pdf-string first blk " ]" ]
+	    ]
+	    'dict = first blk [
+		print "FOund dict"
+		unless block? second blk [ make error! "Dict must be following dict keyword" ]
+		append str rejoin [ "<< " to-pdf-string Z "dict" second blk " >>" ]
+		blk: next blk
+	    ]
+	    string? first blk [
+		append str first blk
+		append str " "
+	    ]
+	    true [
+		append str mold first blk
+		append str " "
+	    ]
+	]
+    ]
+    if #" " = last str [ clear back tail str ]
+    str
+]
+
+
+bind def pdf-bindings
+probe d: do-functions def
+probe dd: do-functions d
+convert-strings dd
+probe dd
+probe to-pdf-string dd
+halt
+
+
+
 d: copy []
 ; make objects
-foreach [name obj] def [ repend d [name reduce obj ] ]
+foreach [name obj] def [ repend d [name reduce bind obj pdf-bindings ] ]
 
 pdf-rslt: copy
 {%PDF-1.6
