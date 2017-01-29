@@ -1,4 +1,3 @@
-%PDF-1.6
 REBOL []
 
 do to-rebol-file rejoin [ get-env("BIOSERVO") %/Tools/rebol/libs/printf.r ]
@@ -29,6 +28,11 @@ xrefs: copy []
 
 Xs: func [ 'name ] [
     reduce [ (index? find names name) 0 'R]
+]
+refSort: func [ blk ][
+    Z "Input to sort" blk
+    change blk sort/skip Z "after do-fun" do-functions blk 3
+    reduce [ blk ]
 ]
 
 do-functions: func [ blk /local rslt ret ][
@@ -61,6 +65,7 @@ do-functions: func [ blk /local rslt ret ][
 ]
 
 convert-strings: func [ blk ][
+    error! "LKjlkJ"
     forall blk [
 	case [
 	    block? first blk [
@@ -85,7 +90,7 @@ to-pdf-string: func [ blk /local str ] [
 	    ]
 	    'dict = first blk [
 		unless block? second blk [ make error! "Dict must be following dict keyword" ]
-		append str rejoin [ "<< " to-pdf-string second blk " >>" ]
+		append str rejoin [ "<<" to-pdf-string second blk ">>" ]
 		blk: next blk
 	    ]
 	    string? first blk [
@@ -128,15 +133,20 @@ stream: func [ name blk /local obj ret ][
     append objs context [
 	type: 'stream
 	name: last names
+	Z "Block coming in" blk
 	block: bind blk pdf-bindings
-	dict: bind copy/part block
-	    stream: find block 'stream pdf-bindings
+	Z "Block after binding" block
+	dict: copy/part block
+	    stream: find block 'stream 
+	stream: copy stream
 	proc-func: func [][
+	    dict:   do-functions dict
 	    stream: do-functions stream
 	]
 	to-string: func [/local str stream-str ] [
-	    str: reform [ index? find names name 0 "obj" newline ]
-	    stream-str: to-pdf-string stream
+	    str: reform [ index? find names name 0 "obj" newline ] 
+dbg: stream
+	    stream-str: probe to-pdf-string probe stream
 	    change next find dict/dict /Length (length? stream-str)
 	    append str to-pdf-string dict
 	    append str newline
@@ -148,34 +158,88 @@ stream: func [ name blk /local obj ret ][
     last objs
 ]
 
-do def
-def: [
+do [
   obj 'catalog [ dict
 	[ /Type /Catalog
-	    /Pages Xs pages 
+	    /Pages Xs pages
 	] ]
     obj 'pages [ dict [
 	    /Type /Pages
-	    /Kids [ Xs mbox Xs page ]
-	    /Count 2
+	    /Kids [ Xs page ]
+	    /Count 1
 	]
     ]
-    obj 'mbox [ dict [
-	    /MediaBox [0 0 800 500]
-	]]
     obj 'info [ dict [
 	    /Creator "pdf-creator.r"
 	    /CreationDate to-string now
     ] ]
-    obj 'page [ dict [ /Type /Page /Parent pages /Contents Xs cont] ]
+    obj 'page [ dict [ /Type /Page
+			/Parent Xs pages
+			/Contents refSort [ Xs cont1 Xs cont2 ]
+			/MediaBox [0 0 500 800 ]
+			/Resources Xs resourse
+		] ]
+    obj 'resourse [ dict [ /Font dict [ /F1 Xs font ]] ]
+    obj 'font [ dict [ 
+			/Type /Font
+			/Subtype /Type1
+			/BaseFont /Helvetica
+		]]
+    stream 'cont1 [ dict [
+	    /Length none
+	]
+	stream 
+	175 520 m 200 | 300 600 400 400 v 100 450 50 75 re h S 
+	endstream
+    ]
+    stream 'cont2 [ dict [
+	    /Length none
+	]
+	stream 
+	BT
+	/F1 24 Tf
+	100 100 Td "Johan Ingvast" Tj
+	ET
+	endstream
+    ]
+]
+[
+  obj 'catalog [ dict
+	[ /Type /Catalog
+	    /Pages Xs pages
+	] ]
+    obj 'pages [ dict [
+	    /Type /Pages
+	    /Kids [ Xs page ]
+	    /Count 1
+	]
+    ]
+    obj 'page [ dict [ /Type /Page
+			/Parent Xs pages
+			/Resources Xs resourse
+			/MediaBox [0 0 500 800 ]
+			/Contents Xs cont
+		] ]
+    obj 'resourse [ dict [ /Font dict [ /F1 Xs font ]] ]
+    obj 'font [ dict [ 
+			/Type /Font
+			/Subtype /Type1
+			/BaseFont /Helvetica
+		]]
     stream 'cont [ dict [
 	    /Length none
 	]
 	stream 
-	175 720 m 500 | 300 800 400 600 v 100 650 50 75 re h S 
+	BT /F1 24 Tf 175 720 Td "Hello World!" Tj ET
+	;BT
+	;/F1 24 Tf
+	;100 100 Td "Johan Ingvast" Tj
+	;ET
 	endstream
     ]
 ]
+
+
 str: "%PDF-1.6"
 forall objs [ 
      objs/1/proc-func
@@ -196,7 +260,6 @@ append str reform [
     to-pdf-string do-functions [dict [
 	/Size add length? xrefs 1 
 	/Root Xs catalog
-	/Info Xs info
     ]] newline
     "startxref" newline
     length? str newline
