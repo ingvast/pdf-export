@@ -167,7 +167,7 @@ to-pdf-string: func [ blk /local str ] [
 	    ]
 	]
     ]
-    if #" " = last str [ clear back tail str ]
+    if all [ not empty? str #" " = last str ] [ clear back tail str ]
     str
 ]
 
@@ -211,7 +211,7 @@ stream: func [ name blk /local obj ret ][
 	    stream-str: probe to-pdf-string probe stream
 	    change next find dict/dict /Length (length? stream-str)
 	    append str to-pdf-string dict
-	    repend str [ newline "stream" ]
+	    repend str [ newline "stream" newline]
 	    append str stream-str
 	    repend str [ newline "endstream" ]
 	    repend str [ newline "endobj" ]
@@ -240,24 +240,39 @@ circle: func [ x y r /local d c m ][
 ]
 rotating: func [
     {Rotates the angle alpha (degrees) around (x,y)
-     X = X A + T
-     the position (x,y) is unchanged, hence
-     T = [x,y] (I - A) 
-    A = [ ca,  sa; -sa, ca ]
-    (I - A) =  [ 1-ca, -sa;  sa,  1-ca]
-    T = [x,y](I-A) = [ (1-ca)x + sa*y,  (1-ca)*y - sa*x  ]}
-    x y alpha
+    A: 
+	[  ca sa 0 ]
+	[ -sa ca 0 ]
+	[  tx ty 1 ]
+
+    x [ x y 1]
+    X*A:
+	[ ca*x - sa*y + tx, sa*x+ca*y+ty, 1]
+    [x0,y0] = X0 * A
+	x0 = ca*x0-sa+tx
+	tx = x0 - ca*x0 + sa*y0
+	y0 = sa*x0+ca*y0+ty
+	ty = y0-sa*x0-ca*y0
+}
+
+    x0 y0 alpha
     /local ca sa Tx Ty cm Axx
 ][
     ca: cosine alpha
-    Axx: 1 - ca
     sa: sine   alpha
-    Tx: Axx * x + ( sa * y )
-    Ty: Axx * y - ( sa * y )
+    Tx: x0 - ( ca * x0 ) + ( sa * y0 )
+    Ty: y0 - ( sa * x0 ) - ( ca * y0 )
     reduce [ ca sa negate sa ca Tx Ty 'cm]
 ]
 
-do [
+translating: func [ dx dy /local cm ][
+    reduce [ 1 0 0 1 dx dy 'cm ]
+]
+scaling: func [ scale /local cm ][
+    reduce [ scale 0 0 scale 0 0 ]
+]
+
+[
   obj 'catalog [ dict
 	[ /Type /Catalog
 	    /Pages Xs pages
@@ -306,15 +321,17 @@ do [
 	175 520 m 200 400 800 400 400 400 v 100 450 50 75 re h S 
 	175 520 m 800 400 l 400 400 l  h S 
 	Q
-	circle 175 520 100 S
 	3 w
 	0 1 0 RG
+	circle 175 520 100 S
 	175 520 m 275 520 l S
-	q
-	2 w
 	1 0 0 RG
-	rotating 175 520 3
+	q
+	translating 1 0
+	2.5 w
+	rotating 175 520 22.5
 	circle 175 520 5 S
+	circle 175 520 100 S
 	175 520 m 275 520 l S
 	Q
 	
@@ -411,10 +428,81 @@ do [
     ]
 ]
 
+obj 'catalog [ dict
+    [ /Type /Catalog
+	/Pages Xs pages
+    ] ]
+obj 'pages [ dict [
+	/Type /Pages
+	/Kids [ Xs page ]
+	/Count 1
+    ]
+]
+obj 'info [ dict [
+	/Creator "pdf-creator.r"
+	/CreationDate to-string now
+] ]
+obj 'resourse [ dict [ /Font dict [ /F1 Xs font ]] ]
+obj 'font [ dict [ 
+		    /Type /Font
+		    /Subtype /Type1
+		    /BaseFont /Helvetica
+		]]
+
+view/new layout [ f: box red 500x500 effect [ draw [ line 0x0 200x100  300x200 500x100] ] ]
+
+current-face: none
+fy-py: func [ y ][ current-face/size/y - y ]
+get-media-box: func [ face ][
+    current-face: face
+    reduce [ reduce [ 0 0 face/size/x face/size/y  ] ]
+]
+face-box: first get-media-box f
+
+obj 'page [ dict [ /Type /Page
+		    /Parent Xs pages
+		    /Contents refSort [ Xs background Xs cont ]
+		    /MediaBox get-media-box f
+		    /Resources Xs resourse
+	    ] ]
+
+strea: []
+parse f/effect/draw [
+    'line opt [ set p pair! ( repend strea [ p/x fy-py p/y 'm ] ) ]
+	  any [ set p pair! ( repend strea [ p/x fy-py p/y 'l ] )]
+    (append strea 'S) 
+]
+either f/color [
+    stream 'background compose [
+	dict [
+	    /Length none
+	]
+	stream
+
+	( reduce [ f/color/1 / 255 f/color/2 / 255 f/color/3 / 255 ] ) rg
+	0 0 m
+	( reduce [ face-box/3 0 'l face-box/3 face-box/4 'l 0 face-box/4 'l 'h 'f] )
+	endstream
+    ]
+]
+[
+    obj 'background []
+]
+
+stream 'cont compose [ 
+    dict [
+	/Length none
+    ]
+    stream
+
+    (strea)
+    endstream
+]
 
 str: "%PDF-1.6"
 forall objs [ 
-     objs/1/proc-func
+    print [ "Procesing object" objs/1/name ]
+    objs/1/proc-func
     append str newline
     append xrefs length? str
     append str objs/1/to-string
@@ -440,20 +528,4 @@ append str reform [
 
 write %test.pdf str
     
-
-
-
-;xref
-;0 6
-;0000000000 65535 f
-;0000000009 00000 n
-;0000000056 00000 n
-;0000000117 00000 n
-;0000000160 00000 n
-;0000000222 00000 n
-;trailer <</Size 4/Root 1 0 R>>
-;startxref
-;324
-;%%EOF
-
 
