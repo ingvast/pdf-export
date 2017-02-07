@@ -84,6 +84,46 @@ pdf-bindings: make object! [
     dict: 'dict
 ]
 
+rebol-draw-commands: [
+    pen fill-pen 
+    line-width
+    line-cap line-join line-pattern
+    miter miter-bevel round bevel
+    butt square round
+    nearest bilinear
+    box triangle
+    line polygon
+    circle ellipse arc
+    spline 
+    curve
+    closed
+    push
+    invert-matrix reset-matrix matrix
+    rotate  scale translate scew transformation
+    
+    arrow
+    clip
+    anti-alias
+    image
+    text
+    font
+    image image-filter
+    ; Skip the shape dialect for now.
+]
+
+; Make a context that can be used to bind all the keywords to itself. That way any block of draw 
+; command can be evaluated after being bound to the context
+rebol-draw-binding: copy []
+foreach x rebol-draw-commands [ repend rebol-draw-binding [ to-set-word x to-lit-word x ] ]
+rebol-draw-binding: context rebol-draw-binding
+
+eval-draw: func [
+    "Evalues a block so that all functions are run and variables replaced by its content"
+    blk [block!] "The block to evaluate"
+][
+    reduce bind/copy blk rebol-draw-binding
+]
+    
 
 xrefs: copy []
 
@@ -208,7 +248,7 @@ stream: func [ name blk /local obj ret ][
 	]
 	to-string: func [/local str stream-str ] [
 	    str: reform [ index? find names name 0 "obj" newline ] 
-	    stream-str: probe to-pdf-string probe stream
+	    stream-str: to-pdf-string stream
 	    change next find dict/dict /Length (length? stream-str)
 	    append str to-pdf-string dict
 	    repend str [ newline "stream" newline]
@@ -220,22 +260,24 @@ stream: func [ name blk /local obj ret ][
     ]
     last objs
 ]
-circle: func [ x y r /local d c m ][
-    d: r * 4 * ( ( square-root 2 ) - 1 ) / 3 
+draw-circle: func [ x y rx /xy ry /local dx dy c m ][
+    ry: any [ ry rx ]
+    dx: rx * 4 * ( ( square-root 2 ) - 1 ) / 3 
+    dy: ry * 4 * ( ( square-root 2 ) - 1 ) / 3 
     reduce [
-	x - r y     'm 
-	x - r y + d 
-	x - d y + r
-	x     y + r 'c
-	x + d y + r
-	x + r y + d
-	x + r y     'c
-	x + r y - d
-	x + d y - r
-	x     y - r 'c
-	x - d y - r
-	x - r y - d
-	x - r y     'c
+	x - rx y     'm 
+	x - rx y + dy
+	x - dx y + ry
+	x      y + ry 'c
+	x + dx y + ry
+	x + rx y + dy
+	x + rx y     'c
+	x + rx y - dy
+	x + dx y - ry
+	x      y - ry 'c
+	x - dx y - ry
+	x - rx y - dy
+	x - rx y     'c
     ]
 ]
 rotating: func [
@@ -323,15 +365,15 @@ scaling: func [ scale /local cm ][
 	Q
 	3 w
 	0 1 0 RG
-	circle 175 520 100 S
+	draw-circle 175 520 100 S
 	175 520 m 275 520 l S
 	1 0 0 RG
 	q
 	translating 1 0
 	2.5 w
 	rotating 175 520 22.5
-	circle 175 520 5 S
-	circle 175 520 100 S
+	draw-circle 175 520 5 S
+	draw-circle 175 520 100 S
 	175 520 m 275 520 l S
 	Q
 	
@@ -449,7 +491,20 @@ obj 'font [ dict [
 		    /BaseFont /Helvetica
 		]]
 
-view/new layout [ f: box red 500x500 effect [ draw [ line 0x0 200x100  300x200 500x100] ] ]
+view/new layout [
+    f: box snow 500x500 effect [
+	draw [
+	    line-width 1
+	    push [
+	        translate 0x100
+		line-width 3
+		fill-pen blue
+		polygon 0x0 200x100  300x200 500x100 
+		circle 200x200 50
+	    ]
+	    circle 200x200 50 40
+	] ]
+]
 
 current-face: none
 fy-py: func [ y ][ current-face/size/y - y ]
@@ -466,12 +521,123 @@ obj 'page [ dict [ /Type /Page
 		    /Resources Xs resourse
 	    ] ]
 
-strea: []
-parse f/effect/draw [
-    'line opt [ set p pair! ( repend strea [ p/x fy-py p/y 'm ] ) ]
-	  any [ set p pair! ( repend strea [ p/x fy-py p/y 'l ] )]
-    (append strea 'S) 
+strea: copy [ ]
+;B 	fill and stroke path.
+;S 	stroke path.
+;f 	fill path.
+;n 	end path without fill or stroke.
+patterns: context [
+    ; locals 
+    p: radius: none
+    current-pen:
+    current-fill: none
+    current-line-width: none
+
+    ; local functions
+    stroke-aor-fill: does [
+	stroke-cmd: either current-pen
+	    [ either current-fill ['B] ['S ] ]
+	    [ either current-fill [ 'f] [ 'n ] ]
+    ]
+    ; Patterns
+    line: [
+	'line opt [ set p pair! ( repend strea [ p/x fy-py p/y 'm ] ) ]
+	      any [ set p pair! ( repend strea [ p/x fy-py p/y 'l ] )]
+	(append strea 'S) 
+    ]
+    polygon: [
+	'polygon opt [ set p pair! ( repend strea [ p/x fy-py p/y 'm ] ) ]
+		 any [ set p pair! ( repend strea [ p/x fy-py p/y 'l ] )]
+	    (append strea 'h append strea stroke-aor-fill)
+    ]
+    line-width: [
+	'line-width set p number! ( current-line-width: p repend strea [ p 'w ] )
+    ]
+    fill-pen:  [
+	'fill-pen [
+	    set color tuple! (
+		current-fill: reduce [ color/1 / 255 color/2 / 255 color/3 / 255 ] 
+		repend strea [ current-fill/1 current-fill/2 current-fill/3 'rg ]
+	    ) 
+	    | 
+	    none! ( current-fill: none )
+	]
+    ]
+    pen:  [
+	'fill-pen [
+	    set color tuple! (
+		current-pen: reduce [ color/1 / 255 color/2 / 255 color/3 / 255 ] 
+		repend strea [ current-pen/1 current-pen/2 current-pen/3 'RG ]
+	    ) 
+	    |
+	    none! ( current-pen: none )
+	]
+    ]
+    circle: [
+	[ 'circle | 'ellipse ] set p pair!
+	    [ copy radius 1 2 number!  (   if 1 = length? probe radius [ append radius radius/1 ]  )
+		| copy radius pair! ( radius: to-block radius )
+	    ]
+	    (
+		append strea draw-circle/xy p/x fy-py p/y radius/1 radius/2
+		append strea stroke-aor-fill
+	    )
+    ]
+    translate: [
+	'translate set p pair! (
+	    append strea translating p/x negate p/y
+	)
+    ]
+    push: [
+	'push set cmds block! 
+	(
+	    repend strea [ 
+		'q ]
+	    eval-patterns cmds
+	    repend strea [ 'Q
+		]
+	    set-current-env
+	)
+    ]
+    set-current-env: does [
+	if current-pen  [ repend strea [ current-pen/1 current-pen/2 current-pen/3 'RG ] ]
+	if current-fill [ repend strea [ current-fill/1 current-fill/2 current-fill/3 'rg ] ]
+	repend strea [ current-line-width 'w ]
+    ]
+
+    eval-patterns: func [ pattern ][
+	
+	set-current-env
+
+	unless parse eval-draw pattern [
+	    any [
+		  patterns/line 
+		| patterns/polygon
+		| patterns/line-width
+		| patterns/fill-pen
+		| patterns/pen
+		| patterns/circle
+		| patterns/translate
+		| patterns/push
+	    ]
+	] [
+	    print [ "Did not find end of pattern" pattern  newline "-----------------"]
+	]
+    ]
 ]
+
+patterns/current-line-width: 1
+patterns/current-pen: if f/color [ 
+			reduce [ 255 - f/color/1 / 255 255 - f/color/2 / 255 255 - f/color/3 / 255 ]
+		      ][
+			[ 1 1 1 ]
+		      ]
+
+		    
+				
+
+patterns/eval-patterns f/effect/draw
+
 either f/color [
     stream 'background compose [
 	dict [
@@ -486,7 +652,7 @@ either f/color [
     ]
 ]
 [
-    obj 'background []
+    obj 'background [q Q ] ; dummy
 ]
 
 stream 'cont compose [ 
