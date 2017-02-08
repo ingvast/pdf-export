@@ -107,6 +107,7 @@ rebol-draw-commands: [
     image
     text
     font
+    anti-aliased vectorial aliased
     image image-filter
     ; Skip the shape dialect for now.
 ]
@@ -241,7 +242,6 @@ stream: func [ name blk /local obj ret ][
 	dict: copy/part block
 	    stream: find block 'stream 
 	stream: copy/part  next stream find stream 'endstream
-	Z "Stream is" stream
 	proc-func: func [][
 	    dict:   do-functions dict
 	    stream: do-functions stream
@@ -260,6 +260,7 @@ stream: func [ name blk /local obj ret ][
     ]
     last objs
 ]
+
 draw-circle: func [ x y rx /xy ry /local dx dy c m ][
     ry: any [ ry rx ]
     dx: rx * 4 * ( ( square-root 2 ) - 1 ) / 3 
@@ -281,6 +282,7 @@ draw-circle: func [ x y rx /xy ry /local dx dy c m ][
     ]
 ]
 rotating: func [
+
     {Rotates the angle alpha (degrees) around (x,y)
     A: 
 	[  ca sa 0 ]
@@ -310,8 +312,32 @@ rotating: func [
 translating: func [ dx dy /local cm ][
     reduce [ 1 0 0 1 dx dy 'cm ]
 ]
-scaling: func [ scale /local cm ][
-    reduce [ scale 0 0 scale 0 0 ]
+scaling: func [ 
+    {Scales the angle alpha (degrees) around (x,y)
+    A = 
+	[  cx 0  0 ]
+	[  0  cy 0 ]
+	[  tx ty 1 ]
+
+    x =  [ x y 1]
+    X*A =
+	[ cx*x + tx, +cy*y+ty, 1]
+    [x0,y0] = X0 * A
+	x0 = cx*x0+tx
+	tx = x0 - cx*x0 = ( 1 - cx ) * x0
+	y0 = cy*y0+ty
+	ty = y0-cy*y0 ( 1 - cy ) * y0
+    }
+    scalex [number!] {Scale factor}
+    /xy scaley [number!] {Scale x with scalex and y with this}
+    /around x [number!] y [number!] {Scale around [x,y]}
+    /local cm
+][
+    x: any [ x 0 ]
+    y: any [ y 0 ]
+    scaley: any [ scaley scalex ]
+    ? scaley ? y
+    reduce [ scalex 0 0 scaley 1 - scalex * x 1 - scaley * y 'cm ]
 ]
 
 [
@@ -491,17 +517,34 @@ obj 'font [ dict [
 		    /BaseFont /Helvetica
 		]]
 
+; Make the font in face/font be the default font by using it once
+fnt: make face/font [  ]
+if system/version/4 == 4
+[
+   fnt/name: "/usr/share/fonts/gnu-free/FreeSans.ttf"
+]
+view/new layout [ box effect[draw [ font fnt text "test" font fnt text "jj" vectorial]]] unview
+
 view/new layout [
     f: box snow 500x500 effect [
 	draw [
+	    font fnt
+	    fill-pen black line-width 1 pen none
+	    text 50x50 "Johan" vectorial
+	    ;text "Ingvast" vectorial
 	    line-width 1
 	    push [
+		scale 0.9 1.1 
 	        translate 0x100
+		rotate 30
 		line-width 3
 		fill-pen blue
 		polygon 0x0 200x100  300x200 500x100 
-		circle 200x200 50
+		circle 300x200 50
+		line 200x200 250x200
+		text 200x200 "Ingvast"
 	    ]
+	    pen green line-width 3
 	    circle 200x200 50 40
 	] ]
 ]
@@ -528,7 +571,7 @@ strea: copy [ ]
 ;n 	end path without fill or stroke.
 patterns: context [
     ; locals 
-    p: radius: none
+    p: radius: string: pair: none
     current-pen:
     current-fill: none
     current-line-width: none
@@ -564,13 +607,12 @@ patterns: context [
 	]
     ]
     pen:  [
-	'fill-pen [
+	'pen [
 	    set color tuple! (
 		current-pen: reduce [ color/1 / 255 color/2 / 255 color/3 / 255 ] 
 		repend strea [ current-pen/1 current-pen/2 current-pen/3 'RG ]
 	    ) 
-	    |
-	    none! ( current-pen: none )
+	    | none! ( current-pen: none )
 	]
     ]
     circle: [
@@ -588,6 +630,16 @@ patterns: context [
 	    append strea translating p/x negate p/y
 	)
     ]
+    scale: [
+	'scale copy p 2 number! (
+	    append strea scaling/xy/around p/1 p/2 0 f/size/y
+	)
+    ]
+    rotate: [
+	'rotate set p number! (
+	    append strea probe rotating 0 f/size/y negate p
+	)
+    ]
     push: [
 	'push set cmds block! 
 	(
@@ -597,6 +649,27 @@ patterns: context [
 	    repend strea [ 'Q
 		]
 	    set-current-env
+	)
+    ]
+    text: [
+	'text
+	    some [ 
+		set p pair! ( pair: p )
+		|
+		set s string! (string: s )
+		|
+		set word [ 'anti-aliased | 'vectorial | 'aliased ]
+	]
+	(
+	    append strea 'BT
+	    repend strea [ /F1 12 'Tf pair/x f/size/y - pair/y 'Td ]
+	    repend strea [ string 'Tj ]
+	    append strea 'ET
+	)
+    ]
+    font: [
+	'font set font object!
+	(
 	)
     ]
     set-current-env: does [
@@ -618,7 +691,11 @@ patterns: context [
 		| patterns/pen
 		| patterns/circle
 		| patterns/translate
+		| patterns/scale
+		| patterns/rotate
 		| patterns/push
+		| patterns/text
+		| patterns/font
 	    ]
 	] [
 	    print [ "Did not find end of pattern" pattern  newline "-----------------"]
