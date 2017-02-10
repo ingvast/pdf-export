@@ -53,5 +53,6 @@ face-to-media 'draw f/effect/draw
 
 draw-to-stream 'draw f/effect/draw
 
+write %test.pdf compose-file 
 
 

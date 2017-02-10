@@ -215,6 +215,7 @@ to-pdf-string: func [ blk /local str ] [
 
 names: copy []
 objs: copy []
+
 obj: func [ name blk /local obj ret ][
     append names name
     append objs context [
@@ -376,17 +377,34 @@ face-to-media: func [ current-face ]
 			/MediaBox get-media-box f
 			/Resources Xs resourse
 		] ]
+
+    either current-face/color [
+	stream 'background compose [
+	    dict [
+		/Length none
+	    ]
+	    stream
+
+	    ( reduce [ current-face/color/1 / 255 current-face/color/2 / 255 current-face/color/3 / 255 ] ) rg
+	    0 0 m
+	    ( reduce [ face-box/3 0 'l face-box/3 face-box/4 'l 0 face-box/4 'l 'h 'f] )
+	    endstream
+	]
+    ]
+    [
+	obj 'background [q Q ] ; dummy
+    ]
 ]
 
 draw-to-stream: func [
-    current-face [object!]
+    cmd [ block!] {The draw commands to parse}
+    f  [object!]  {The face from what to calculate original colours, and size}
+    /local
 ][
 
+    fy-py: func [ y ][ f/size/y - y ]
+
     strea: copy [ ]
-    ;B 	fill and stroke path.
-    ;S 	stroke path.
-    ;f 	fill path.
-    ;n 	end path without fill or stroke.
     patterns: context [
 	; locals 
 	p: radius: string: pair: none
@@ -531,24 +549,8 @@ draw-to-stream: func [
 			
 				    
 
-    patterns/eval-patterns f/effect/draw
+    patterns/eval-patterns cmd
 
-    either f/color [
-	stream 'background compose [
-	    dict [
-		/Length none
-	    ]
-	    stream
-
-	    ( reduce [ f/color/1 / 255 f/color/2 / 255 f/color/3 / 255 ] ) rg
-	    0 0 m
-	    ( reduce [ face-box/3 0 'l face-box/3 face-box/4 'l 0 face-box/4 'l 'h 'f] )
-	    endstream
-	]
-    ]
-    [
-	obj 'background [q Q ] ; dummy
-    ]
 
     stream 'cont compose [ 
 	dict [
@@ -561,33 +563,36 @@ draw-to-stream: func [
     ]
 ]
 
-str: "%PDF-1.6"
-forall objs [ 
-    print [ "Procesing object" objs/1/name ]
-    objs/1/proc-func
+compose-file: func [ ]
+[
+    str: "%PDF-1.6"
+    forall objs [ 
+	print [ "Procesing object" objs/1/name ]
+	objs/1/proc-func
+	append str newline
+	append xrefs length? str
+	append str objs/1/to-string
+    ]
     append str newline
-    append xrefs length? str
-    append str objs/1/to-string
-]
-append str newline
 
-xref-str: copy ""
+    xref-str: copy ""
 
-append str reform [
-    "xref" newline
-    0 1 + length? objs newline
-    "0000000000 65535 f" newline
-    rejoin map-each x xrefs [ join sprintf [ "%010d 00000 n " x - 1]  newline ]
-    "trailer" newline
-    to-pdf-string do-functions [dict [
-	/Size add length? xrefs 1 
-	/Root Xs catalog
-    ]] newline
-    "startxref" newline
-    length? str newline
-    "%%EOF"
+    append str reform [
+	"xref" newline
+	0 1 + length? objs newline
+	"0000000000 65535 f" newline
+	rejoin map-each x xrefs [ join sprintf [ "%010d 00000 n " x - 1]  newline ]
+	"trailer" newline
+	to-pdf-string do-functions [dict [
+	    /Size add length? xrefs 1 
+	    /Root Xs catalog
+	]] newline
+	"startxref" newline
+	length? str newline
+	"%%EOF"
+    ]
+    str
 ]
 
-write %test.pdf str
     
 
