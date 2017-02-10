@@ -1,4 +1,5 @@
 REBOL []
+
 pdf-stream-syntax: {
 taken from http://www.mactech.com/articles/mactech/Vol.15/15.09/PDFIntro/index.html
 b 	closepath, fill,and stroke path.
@@ -340,406 +341,224 @@ scaling: func [
     reduce [ scalex 0 0 scaley 1 - scalex * x 1 - scaley * y 'cm ]
 ]
 
+
 [
-  obj 'catalog [ dict
-	[ /Type /Catalog
-	    /Pages Xs pages
-	] ]
-    obj 'pages [ dict [
-	    /Type /Pages
-	    /Kids [ Xs page ]
-	    /Count 1
-	]
+    ; Make the font in face/font be the default font by using it once
+    current-font: make face/font [  ]
+    ; The standard Type1 fonts in pdf are:
+    ; Times-Roman, Helvetica, Courier, Symbol,
+    ; Times-Bold, Helvetica-Bold, Courier-Bold,
+    ; ZapfDingbats, Times-Italic, Helvetica-Oblique,
+    ; Courier-Oblique, Times-BoldItalic,
+    ; Helvetica-BoldOblique, Courier-BoldOblique
+    if system/version/4 == 4
+    [
+       current-font/name: "/usr/share/fonts/gnu-free/FreeSans.ttf"
+       current-font/name: "/usr/share/fonts/msttcore/times.ttf"
+	current-font/size: 24
     ]
-    obj 'info [ dict [
-	    /Creator "pdf-creator.r"
-	    /CreationDate to-string now
-    ] ]
+    view/new layout [ box effect[draw [ font current-font text "test" font current-font text "jj" vectorial]]] unview
+
+
+face-to-media: func [ current-face ]
+[
+
+    fy-py: func [ y ][ current-face/size/y - y ]
+    get-media-box: func [  ][
+	reduce [ reduce [ 0 0 face/size/x face/size/y  ] ]
+    ]
+
+    face-box: first get-media-box f
+
     obj 'page [ dict [ /Type /Page
 			/Parent Xs pages
-			/Contents refSort [ Xs cont1 Xs cont2 ]
-			/MediaBox [0 0 500 800 ]
+			/Contents refSort [ Xs background Xs cont ]
+			/MediaBox get-media-box f
 			/Resources Xs resourse
 		] ]
-    obj 'resourse [ dict [ /Font dict [ /F1 Xs font ]] ]
-    obj 'font [ dict [ 
-			/Type /Font
-			/Subtype /Type1
-			/BaseFont /Helvetica
-		]]
-    stream 'cont1 [ dict [
-	    /Length none
-	]
-	stream 
-	100 100 m 100 150 l 200 150 l 200 100 l S
-	100 100 m 100 150 200 150  200 100 c S
-	q 1 0 0 1 300 100 cm
-	-50 50 m 50 50 l 50 -50 l -50 -50 l s
-	-50 0 m  -50 40 -40 50 0 50 v 
-	         50 50 50 50 50 0 v
-		 50 -50 50 -50 0 -50 v
-		-50 -50 -50 -50 -50 0 v
-	f
-	1 0 0 RG
-	-50 0 m 
-	-50 -50 -50 50 y
-	S
-	Q
-	q 1 0.1 -0.1 0.75 0 0 cm
-	175 520 m 200 400 800 400 400 400 v 100 450 50 75 re h S 
-	175 520 m 800 400 l 400 400 l  h S 
-	Q
-	3 w
-	0 1 0 RG
-	draw-circle 175 520 100 S
-	175 520 m 275 520 l S
-	1 0 0 RG
-	q
-	translating 1 0
-	2.5 w
-	rotating 175 520 22.5
-	draw-circle 175 520 5 S
-	draw-circle 175 520 100 S
-	175 520 m 275 520 l S
-	Q
-	
-	BT
-	/F1 12 Tf 100 450 Td
-	"Me and Melindas" Tj
-	12 TL
-	"Ho Ho PPP" Tj
-	12 TL
-	"Ho HoC" Tj
-	T*
-	"Ho Ho3" Tj
-	T*
-	"Ho Ho4" Tj
-	
-	ET
-	175 520 m 200 | 300 600 400 400 v 100 450 50 75 re h S 
-	endstream
-    ]
-
-    stream 'cont2 [ dict [
-	    /Length none
-	]
-	stream 
-	BT
-	/F1 24 Tf
-	100 100 Td "Johan Ingvast" Tj
-	ET
-	endstream
-    ]
-]
-[
-  obj 'catalog [ dict
-	[ /Type /Catalog
-	    /Pages Xs pages
-	] ]
-    obj 'pages [ dict [
-	    /Type /Pages
-	    /Kids [ Xs page ]
-	    /Count 1
-	]
-    ]
-    obj 'info [ dict [
-	    /Creator "pdf-creator.r"
-	    /CreationDate to-string now
-    ] ]
-    obj 'page [ dict [ /Type /Page
-			/Parent Xs pages
-			/Contents refSort Xs cont 
-			/MediaBox [0 0 500 800 ]
-			;/Resources dict [ /ProcSet [/PDF] ]
-		] ]
-    stream 'cont [ dict [
-	    /Length none
-	]
-	stream 
-	175 520 m 200 | 300 600 400 400 v 100 450 50 75 re h S 
-	endstream
-    ]
-]
-[
-  obj 'catalog [ dict
-	[ /Type /Catalog
-	    /Pages Xs pages
-	] ]
-    obj 'pages [ dict [
-	    /Type /Pages
-	    /Kids [ Xs page ]
-	    /Count 1
-	]
-    ]
-    obj 'page [ dict [ /Type /Page
-			/Parent Xs pages
-			/Resources Xs resourse
-			/MediaBox [0 0 500 800 ]
-			/Contents Xs cont
-		] ]
-    obj 'resourse [ dict [ /Font dict [ /F1 Xs font ]] ]
-    obj 'font [ dict [ 
-			/Type /Font
-			/Subtype /Type1
-			/BaseFont /Times-Roman
-		]]
-    stream 'cont [ dict [
-	    /Length none
-	]
-	stream 
-	BT /F1 24 Tf 175 720 Td "Hello World!" Tj ET
-	;BT
-	;/F1 24 Tf
-	;100 100 Td "Johan Ingvast" Tj
-	;ET
-	endstream
-    ]
 ]
 
-obj 'catalog [ dict
-    [ /Type /Catalog
-	/Pages Xs pages
-    ] ]
-obj 'pages [ dict [
-	/Type /Pages
-	/Kids [ Xs page ]
-	/Count 1
-    ]
-]
-obj 'info [ dict [
-	/Creator "pdf-creator.r"
-	/CreationDate to-string now
-] ]
-obj 'resourse [ dict [ /Font dict [ /F1 Xs font ]] ]
-obj 'font [ dict [ 
-		    /Type /Font
-		    /Subtype /Type1
-		    /BaseFont /Helvetica
-		]]
+draw-to-stream: func [
+    current-face [object!]
+][
 
-; Make the font in face/font be the default font by using it once
-fnt: make face/font [  ]
-if system/version/4 == 4
-[
-   fnt/name: "/usr/share/fonts/gnu-free/FreeSans.ttf"
-]
-view/new layout [ box effect[draw [ font fnt text "test" font fnt text "jj" vectorial]]] unview
+    strea: copy [ ]
+    ;B 	fill and stroke path.
+    ;S 	stroke path.
+    ;f 	fill path.
+    ;n 	end path without fill or stroke.
+    patterns: context [
+	; locals 
+	p: radius: string: pair: none
+	current-pen:
+	current-fill: none
+	current-line-width: none
 
-view/new layout [
-    f: box snow 500x500 effect [
-	draw [
-	    font fnt
-	    fill-pen black line-width 1 pen none
-	    text 50x50 "Johan" vectorial
-	    ;text "Ingvast" vectorial
-	    line-width 1
-	    push [
-		scale 0.9 1.1 
-	        translate 0x100
-		rotate 30
-		line-width 3
-		fill-pen blue
-		polygon 0x0 200x100  300x200 500x100 
-		circle 300x200 50
-		line 200x200 250x200
-		text 200x200 "Ingvast"
+	; local functions
+	stroke-aor-fill: does [
+	    stroke-cmd: either current-pen
+		[ either current-fill ['B] ['S ] ]
+		[ either current-fill [ 'f] [ 'n ] ]
+	]
+	; Patterns
+	line: [
+	    'line opt [ set p pair! ( repend strea [ p/x fy-py p/y 'm ] ) ]
+		  any [ set p pair! ( repend strea [ p/x fy-py p/y 'l ] )]
+	    (append strea 'S) 
+	]
+	polygon: [
+	    'polygon opt [ set p pair! ( repend strea [ p/x fy-py p/y 'm ] ) ]
+		     any [ set p pair! ( repend strea [ p/x fy-py p/y 'l ] )]
+		(append strea 'h append strea stroke-aor-fill)
+	]
+	line-width: [
+	    'line-width set p number! ( current-line-width: p repend strea [ p 'w ] )
+	]
+	fill-pen:  [
+	    'fill-pen [
+		set color tuple! (
+		    current-fill: reduce [ color/1 / 255 color/2 / 255 color/3 / 255 ] 
+		    repend strea [ current-fill/1 current-fill/2 current-fill/3 'rg ]
+		) 
+		| 
+		none! ( current-fill: none )
 	    ]
-	    pen green line-width 3
-	    circle 200x200 50 40
-	] ]
-]
-
-current-face: none
-fy-py: func [ y ][ current-face/size/y - y ]
-get-media-box: func [ face ][
-    current-face: face
-    reduce [ reduce [ 0 0 face/size/x face/size/y  ] ]
-]
-face-box: first get-media-box f
-
-obj 'page [ dict [ /Type /Page
-		    /Parent Xs pages
-		    /Contents refSort [ Xs background Xs cont ]
-		    /MediaBox get-media-box f
-		    /Resources Xs resourse
-	    ] ]
-
-strea: copy [ ]
-;B 	fill and stroke path.
-;S 	stroke path.
-;f 	fill path.
-;n 	end path without fill or stroke.
-patterns: context [
-    ; locals 
-    p: radius: string: pair: none
-    current-pen:
-    current-fill: none
-    current-line-width: none
-
-    ; local functions
-    stroke-aor-fill: does [
-	stroke-cmd: either current-pen
-	    [ either current-fill ['B] ['S ] ]
-	    [ either current-fill [ 'f] [ 'n ] ]
-    ]
-    ; Patterns
-    line: [
-	'line opt [ set p pair! ( repend strea [ p/x fy-py p/y 'm ] ) ]
-	      any [ set p pair! ( repend strea [ p/x fy-py p/y 'l ] )]
-	(append strea 'S) 
-    ]
-    polygon: [
-	'polygon opt [ set p pair! ( repend strea [ p/x fy-py p/y 'm ] ) ]
-		 any [ set p pair! ( repend strea [ p/x fy-py p/y 'l ] )]
-	    (append strea 'h append strea stroke-aor-fill)
-    ]
-    line-width: [
-	'line-width set p number! ( current-line-width: p repend strea [ p 'w ] )
-    ]
-    fill-pen:  [
-	'fill-pen [
-	    set color tuple! (
-		current-fill: reduce [ color/1 / 255 color/2 / 255 color/3 / 255 ] 
-		repend strea [ current-fill/1 current-fill/2 current-fill/3 'rg ]
-	    ) 
-	    | 
-	    none! ( current-fill: none )
 	]
-    ]
-    pen:  [
-	'pen [
-	    set color tuple! (
-		current-pen: reduce [ color/1 / 255 color/2 / 255 color/3 / 255 ] 
-		repend strea [ current-pen/1 current-pen/2 current-pen/3 'RG ]
-	    ) 
-	    | none! ( current-pen: none )
+	pen:  [
+	    'pen [
+		set color tuple! (
+		    current-pen: reduce [ color/1 / 255 color/2 / 255 color/3 / 255 ] 
+		    repend strea [ current-pen/1 current-pen/2 current-pen/3 'RG ]
+		) 
+		| none! ( current-pen: none )
+	    ]
 	]
-    ]
-    circle: [
-	[ 'circle | 'ellipse ] set p pair!
-	    [ copy radius 1 2 number!  (   if 1 = length? probe radius [ append radius radius/1 ]  )
-		| copy radius pair! ( radius: to-block radius )
+	circle: [
+	    [ 'circle | 'ellipse ] set p pair!
+		[ copy radius 1 2 number!  (   if 1 = length? probe radius [ append radius radius/1 ]  )
+		    | copy radius pair! ( radius: to-block radius )
+		]
+		(
+		    append strea draw-circle/xy p/x fy-py p/y radius/1 radius/2
+		    append strea stroke-aor-fill
+		)
+	]
+	translate: [
+	    'translate set p pair! (
+		append strea translating p/x negate p/y
+	    )
+	]
+	scale: [
+	    'scale copy p 2 number! (
+		append strea scaling/xy/around p/1 p/2 0 f/size/y
+	    )
+	]
+	rotate: [
+	    'rotate set p number! (
+		append strea probe rotating 0 f/size/y negate p
+	    )
+	]
+	push: [
+	    'push set cmds block! 
+	    (
+		repend strea [ 
+		    'q ]
+		eval-patterns cmds
+		repend strea [ 'Q
+		    ]
+		set-current-env
+	    )
+	]
+	text: [
+	    'text
+		some [ 
+		    set p pair! ( pair: p )
+		    |
+		    set s string! (string: s )
+		    |
+		    set word [ 'anti-aliased | 'vectorial | 'aliased ]
 	    ]
 	    (
-		append strea draw-circle/xy p/x fy-py p/y radius/1 radius/2
-		append strea stroke-aor-fill
+		append strea 'BT
+		repend strea [ /F1 current-font/size 'Tf pair/x f/size/y - pair/y 'Td ]
+		repend strea [ string 'Tj ]
+		append strea 'ET
 	    )
-    ]
-    translate: [
-	'translate set p pair! (
-	    append strea translating p/x negate p/y
-	)
-    ]
-    scale: [
-	'scale copy p 2 number! (
-	    append strea scaling/xy/around p/1 p/2 0 f/size/y
-	)
-    ]
-    rotate: [
-	'rotate set p number! (
-	    append strea probe rotating 0 f/size/y negate p
-	)
-    ]
-    push: [
-	'push set cmds block! 
-	(
-	    repend strea [ 
-		'q ]
-	    eval-patterns cmds
-	    repend strea [ 'Q
-		]
+	]
+	font: [
+	    'font set font object!
+	    (
+	    )
+	]
+	set-current-env: does [
+	    if current-pen  [ repend strea [ current-pen/1 current-pen/2 current-pen/3 'RG ] ]
+	    if current-fill [ repend strea [ current-fill/1 current-fill/2 current-fill/3 'rg ] ]
+	    repend strea [ current-line-width 'w ]
+	]
+
+	eval-patterns: func [ pattern ][
+	    
 	    set-current-env
-	)
-    ]
-    text: [
-	'text
-	    some [ 
-		set p pair! ( pair: p )
-		|
-		set s string! (string: s )
-		|
-		set word [ 'anti-aliased | 'vectorial | 'aliased ]
-	]
-	(
-	    append strea 'BT
-	    repend strea [ /F1 12 'Tf pair/x f/size/y - pair/y 'Td ]
-	    repend strea [ string 'Tj ]
-	    append strea 'ET
-	)
-    ]
-    font: [
-	'font set font object!
-	(
-	)
-    ]
-    set-current-env: does [
-	if current-pen  [ repend strea [ current-pen/1 current-pen/2 current-pen/3 'RG ] ]
-	if current-fill [ repend strea [ current-fill/1 current-fill/2 current-fill/3 'rg ] ]
-	repend strea [ current-line-width 'w ]
-    ]
 
-    eval-patterns: func [ pattern ][
-	
-	set-current-env
-
-	unless parse eval-draw pattern [
-	    any [
-		  patterns/line 
-		| patterns/polygon
-		| patterns/line-width
-		| patterns/fill-pen
-		| patterns/pen
-		| patterns/circle
-		| patterns/translate
-		| patterns/scale
-		| patterns/rotate
-		| patterns/push
-		| patterns/text
-		| patterns/font
+	    unless parse eval-draw pattern [
+		any [
+		      patterns/line 
+		    | patterns/polygon
+		    | patterns/line-width
+		    | patterns/fill-pen
+		    | patterns/pen
+		    | patterns/circle
+		    | patterns/translate
+		    | patterns/scale
+		    | patterns/rotate
+		    | patterns/push
+		    | patterns/text
+		    | patterns/font
+		]
+	    ] [
+		print [ "Did not find end of pattern" pattern  newline "-----------------"]
 	    ]
-	] [
-	    print [ "Did not find end of pattern" pattern  newline "-----------------"]
 	]
     ]
-]
 
-patterns/current-line-width: 1
-patterns/current-pen: if f/color [ 
-			reduce [ 255 - f/color/1 / 255 255 - f/color/2 / 255 255 - f/color/3 / 255 ]
-		      ][
-			[ 1 1 1 ]
-		      ]
+    patterns/current-line-width: 1
+    patterns/current-pen: if f/color [ 
+			    reduce [ 255 - f/color/1 / 255 255 - f/color/2 / 255 255 - f/color/3 / 255 ]
+			  ][
+			    [ 1 1 1 ]
+			  ]
 
-		    
-				
+			
+				    
 
-patterns/eval-patterns f/effect/draw
+    patterns/eval-patterns f/effect/draw
 
-either f/color [
-    stream 'background compose [
+    either f/color [
+	stream 'background compose [
+	    dict [
+		/Length none
+	    ]
+	    stream
+
+	    ( reduce [ f/color/1 / 255 f/color/2 / 255 f/color/3 / 255 ] ) rg
+	    0 0 m
+	    ( reduce [ face-box/3 0 'l face-box/3 face-box/4 'l 0 face-box/4 'l 'h 'f] )
+	    endstream
+	]
+    ]
+    [
+	obj 'background [q Q ] ; dummy
+    ]
+
+    stream 'cont compose [ 
 	dict [
 	    /Length none
 	]
 	stream
 
-	( reduce [ f/color/1 / 255 f/color/2 / 255 f/color/3 / 255 ] ) rg
-	0 0 m
-	( reduce [ face-box/3 0 'l face-box/3 face-box/4 'l 0 face-box/4 'l 'h 'f] )
+	(strea)
 	endstream
     ]
-]
-[
-    obj 'background [q Q ] ; dummy
-]
-
-stream 'cont compose [ 
-    dict [
-	/Length none
-    ]
-    stream
-
-    (strea)
-    endstream
 ]
 
 str: "%PDF-1.6"
