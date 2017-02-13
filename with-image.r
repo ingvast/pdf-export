@@ -1,3 +1,7 @@
+REBOL [
+       ]
+
+do %create-pdf.r
 do [
   obj 'catalog [ dict
 	[ /Type /Catalog
@@ -38,7 +42,7 @@ do [
 	    /Filter /ASCIIHexDecode
 	]
 	stream
-	    ( copy/part skip p: to-binary logo.gif 2 back tail p )
+	    ( logo.gif )
 	endstream
 ]
 	

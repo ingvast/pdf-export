@@ -133,11 +133,17 @@ xrefs: copy []
 ;<</Type /Catalog /Pages 2 0 R>>
 ;endobj
 
-Xs: func [ 'name ] [
-    reduce [ (index? find names name) 0 'R]
+Xs: func [ 'name /local i] [
+    ? name
+    either i: find names name [
+	reduce [ (index? i ) 0 'R]
+    ][
+	make error! rejoin [ {Cannot find object '} name {'} ]
+    ]
 ]
+
 refSort: func [ blk ][
-    change blk sort/skip do-functions blk 3
+    change blk sort/skip probe do-functions blk 3
     reduce [ blk ]
 ]
 
@@ -185,7 +191,7 @@ convert-strings: func [ blk ][
 ]
 
 
-to-pdf-string: func [ blk /local str ] [
+to-pdf-string: func [ blk /local str p ] [
     str: copy ""
     ;print [ type? blk copy/part _: mold blk any [find _ newline tail _ ]]
     forall blk [
@@ -202,6 +208,12 @@ to-pdf-string: func [ blk /local str ] [
 	    string? first blk [
 		append str rejoin [ "(" first blk ")" ]
 		append str " "
+	    ]
+	    binary? first blk [
+		append str copy/part skip p: mold first blk 2 back tail p
+	    ]
+	    image? first blk [
+		append str copy/part skip p: mold to-binary first blk 2 back tail p
 	    ]
 	    true [
 		append str mold first blk
@@ -343,40 +355,36 @@ scaling: func [
 ]
 
 
+; Make the font in face/font be the default font by using it once
+current-font: make face/font [  ]
+; The standard Type1 fonts in pdf are:
+; Times-Roman, Helvetica, Courier, Symbol,
+; Times-Bold, Helvetica-Bold, Courier-Bold,
+; ZapfDingbats, Times-Italic, Helvetica-Oblique,
+; Courier-Oblique, Times-BoldItalic,
+; Helvetica-BoldOblique, Courier-BoldOblique
+if system/version/4 == 4
 [
-    ; Make the font in face/font be the default font by using it once
-    current-font: make face/font [  ]
-    ; The standard Type1 fonts in pdf are:
-    ; Times-Roman, Helvetica, Courier, Symbol,
-    ; Times-Bold, Helvetica-Bold, Courier-Bold,
-    ; ZapfDingbats, Times-Italic, Helvetica-Oblique,
-    ; Courier-Oblique, Times-BoldItalic,
-    ; Helvetica-BoldOblique, Courier-BoldOblique
-    if system/version/4 == 4
-    [
-       current-font/name: "/usr/share/fonts/gnu-free/FreeSans.ttf"
-       current-font/name: "/usr/share/fonts/msttcore/times.ttf"
-	current-font/size: 24
-    ]
-    view/new layout [ box effect[draw [ font current-font text "test" font current-font text "jj" vectorial]]] unview
+   current-font/name: "/usr/share/fonts/gnu-free/FreeSans.ttf"
+   current-font/name: "/usr/share/fonts/msttcore/times.ttf"
+    current-font/size: 24
+]
+view/new layout [ box effect[draw [ font current-font text "test" font current-font text "jj" vectorial]]] unview/all
 
 
-face-to-media: func [ current-face ]
-[
+face-to-page: func [
+    name [word!]
+    current-face [ object!]
+    contents [block!]  {The objects that make  up the page, contents}
+    resources  [block!]  {The objects that make  up the page, contents}
+] [
 
     fy-py: func [ y ][ current-face/size/y - y ]
     get-media-box: func [  ][
-	reduce [ reduce [ 0 0 face/size/x face/size/y  ] ]
+	reduce [ reduce [ 0 0 current-face/size/x current-face/size/y  ] ]
     ]
 
     face-box: first get-media-box f
-
-    obj 'page [ dict [ /Type /Page
-			/Parent Xs pages
-			/Contents refSort [ Xs background Xs cont ]
-			/MediaBox get-media-box f
-			/Resources Xs resourse
-		] ]
 
     either current-face/color [
 	stream 'background compose [
@@ -394,9 +402,23 @@ face-to-media: func [ current-face ]
     [
 	obj 'background [q Q ] ; dummy
     ]
+    
+    contents: copy contents
+    resources: copy resources
+    forall contents [ insert contents 'Xs first+ contents ]
+    forall resources [ insert resources 'Xs first+ resources ]
+
+    obj name  compose/deep [ dict [ /Type /Page
+			/Parent Xs pages
+			/Contents refSort [ Xs background ( contents) ]
+			/MediaBox get-media-box 
+			/Resources [ (resources ) ]
+		] ]
+
 ]
 
 draw-to-stream: func [
+    name [word!]  {Name of the stream object }
     cmd [ block!] {The draw commands to parse}
     f  [object!]  {The face from what to calculate original colours, and size}
     /local
@@ -546,13 +568,9 @@ draw-to-stream: func [
 			    [ 1 1 1 ]
 			  ]
 
-			
-				    
-
     patterns/eval-patterns cmd
 
-
-    stream 'cont compose [ 
+    stream name compose [ 
 	dict [
 	    /Length none
 	]

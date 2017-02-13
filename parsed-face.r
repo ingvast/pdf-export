@@ -7,17 +7,20 @@ obj 'catalog [ dict
     [ /Type /Catalog
 	/Pages Xs pages
     ] ]
+
 obj 'pages [ dict [
 	/Type /Pages
 	/Kids [ Xs page ]
 	/Count 1
     ]
 ]
+
 obj 'info [ dict [
 	/Creator "pdf-creator.r"
 	/CreationDate to-string now
 ] ]
-obj 'resourse [ dict [ /Font dict [ /F1 Xs font ]] ]
+
+obj 'resource [ dict [ /Font dict [ /F1 Xs font ]] ]
 
 obj 'font [ dict [ 
 		    /Type /Font
@@ -26,7 +29,7 @@ obj 'font [ dict [
 		]]
 
 view/new layout [
-    f: box snow 500x500 effect [
+    f: box forest * 2 500x500 effect [
 	draw [
 	    font current-font
 	    fill-pen black line-width 1 pen none
@@ -49,9 +52,9 @@ view/new layout [
 	] ]
 ]
 
-face-to-media 'draw f/effect/draw
+face-to-page 'page f [ cont ] [ resource ]
 
-draw-to-stream 'draw f/effect/draw
+draw-to-stream 'cont f/effect/draw f
 
 write %test.pdf compose-file 
 
