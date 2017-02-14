@@ -599,7 +599,7 @@ compose-file: func [ ]
 	"xref" newline
 	0 1 + length? objs newline
 	"0000000000 65535 f" newline
-	rejoin map-each x xrefs [ join sprintf [ "%010d 00000 n " x - 1]  newline ]
+	rejoin map-each x xrefs [ join sprintf [ "%010d 00000 n " x]  newline ]
 	"trailer" newline
 	to-pdf-string do-functions [dict [
 	    /Size add length? xrefs 1 

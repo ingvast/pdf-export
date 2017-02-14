@@ -25,7 +25,7 @@ obj 'resource [ dict [ /Font dict [ /F1 Xs font ]] ]
 obj 'font [ dict [ 
 		    /Type /Font
 		    /Subtype /Type1
-		    /BaseFont /Times-Roman
+		    /BaseFont /Helvetica
 		]]
 
 view/new layout [
