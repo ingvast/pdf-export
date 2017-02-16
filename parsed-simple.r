@@ -37,12 +37,12 @@ obj 'Times-Roman [ dict [
 		]]
 
 view/new layout [
-    f: text "Face text" green  500x500 effect [
+    f: text "Face text" black  500x500 effect [
 	draw [
 	    pen none
 	    fill-pen red
 	    font current-font
-	    text 50x50 "Draw text" vectorial
+	    text 40x3 "Draw text" vectorial
 	    line-width 5
 	    pen blue
 	    line 50x74 150x74

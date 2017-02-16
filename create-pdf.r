@@ -427,6 +427,7 @@ draw-to-stream: func [
     name [word!]  {Name of the stream object }
     cmd [ block!] {The draw commands to parse}
     f  [object!]  {The face from what to calculate original colours, and size}
+    /noregister {Set this to only return a stream, do not register with name}
     /local
 ][
 
@@ -576,15 +577,18 @@ draw-to-stream: func [
 
     patterns/eval-patterns cmd
     
-    stream name compose [ 
-	dict [
-	    /Length none
-	]
-	stream
+    unless noregister [
+	stream name compose [ 
+	    dict [
+		/Length none
+	    ]
+	    stream
 
-	(strea)  ; Remove the space in previous line
-	endstream
+	    (strea)  ; Remove the space in previous line
+	    endstream
+	]
     ]
+    strea
 ]
 
 compose-file: func [ ]
