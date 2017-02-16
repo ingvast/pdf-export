@@ -526,7 +526,7 @@ draw-to-stream: func [
 	    ]
 	    (
 		append strea 'BT
-		repend strea [ /F1 current-font/size 'Tf pair/x f/size/y - pair/y - current-font/size 'Td ]
+		repend strea [ /Times-Roman current-font/size 'Tf pair/x f/size/y - pair/y - current-font/size 'Td ]
 		repend strea [ string 'Tj ]
 		append strea 'ET
 	    )
