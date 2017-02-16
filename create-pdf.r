@@ -68,6 +68,8 @@ y 	curveto.
 
 do to-rebol-file rejoin [ get-env("BIOSERVO") %/Tools/rebol/libs/printf.r ]
 
+space: #" "
+
 Z: func [ msg con][ print rejoin [ msg ": " mold con ] con]
 pdf-bindings: make object! [
     ; Streams
@@ -202,12 +204,12 @@ to-pdf-string: func [ blk /local str p ] [
 	    ]
 	    'dict = first blk [
 		unless block? second blk [ make error! "Dict must be following dict keyword" ]
-		append str rejoin [ "<<" to-pdf-string second blk ">>" ]
+		append str rejoin [ "<<" to-pdf-string second blk " >>" ]
 		blk: next blk
 	    ]
 	    string? first blk [
 		append str rejoin [ "(" first blk ")" ]
-		append str " "
+		append str space
 	    ]
 	    binary? first blk [
 		append str copy/part skip p: mold first blk 2 back tail p
@@ -217,7 +219,7 @@ to-pdf-string: func [ blk /local str p ] [
 	    ]
 	    true [
 		append str mold first blk
-		append str " "
+		append str space
 	    ]
 	]
     ]
@@ -412,7 +414,7 @@ face-to-page: func [
 			/Parent Xs pages
 			/Contents refSort [ Xs background ( contents) ]
 			/MediaBox get-media-box 
-			/Resources [ (resources ) ]
+			/Resources (either 2 = length? resources [ resources ][ reduce [ resources ] ] )
 		] ]
 
 ]
@@ -569,7 +571,7 @@ draw-to-stream: func [
 			  ]
 
     patterns/eval-patterns cmd
-
+    
     stream name compose [ 
 	dict [
 	    /Length none
@@ -583,7 +585,7 @@ draw-to-stream: func [
 
 compose-file: func [ ]
 [
-    str: "%PDF-1.6"
+    str: copy "%PDF-1.6"
     forall objs [ 
 	print [ "Procesing object" objs/1/name ]
 	objs/1/proc-func
@@ -594,13 +596,12 @@ compose-file: func [ ]
     append str newline
 
     xref-str: copy ""
-
-    append str reform [
+    append str rejoin [
 	"xref" newline
-	0 1 + length? objs newline
-	"0000000000 65535 f" newline
+	0 space 1 + length? objs newline
+	"0000000000 65535 f " newline
 	rejoin map-each x xrefs [ join sprintf [ "%010d 00000 n " x]  newline ]
-	"trailer" newline
+	"trailer" newline 
 	to-pdf-string do-functions [dict [
 	    /Size add length? xrefs 1 
 	    /Root Xs catalog
