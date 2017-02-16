@@ -20,7 +20,7 @@ obj 'info [ dict [
 	/CreationDate to-string now
 ] ]
 
-obj 'resource [ dict [ /Font dict [ /F1 Xs font ]] ]
+obj 'resources [ dict [ /Font dict [ /F1 Xs font ]] ]
 
 obj 'font [ dict [ 
 		    /Type /Font
@@ -29,16 +29,18 @@ obj 'font [ dict [
 		]]
 
 view/new layout [
-    f: box white  500x500 effect [
+    f: box ivory  500x500 effect [
 	draw [
+	    pen none
+	    fill-pen red
 	    font current-font
 	    text 50x50 "Johan" vectorial
 	] ]
 ]
 
-face-to-page 'page f [ cont ] [ resource ]
-
 draw-to-stream 'cont f/effect/draw f
+face-to-page 'page f [ cont ]  'resources 
+
 
 write %test.pdf compose-file 
 

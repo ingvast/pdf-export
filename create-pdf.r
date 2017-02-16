@@ -378,7 +378,7 @@ face-to-page: func [
     name [word!]
     current-face [ object!]
     contents [block!]  {The objects that make  up the page, contents}
-    resources  [block!]  {The objects that make  up the page, contents}
+    resources  [word!]  {Reference to the object specifying the resources}
 ] [
 
     fy-py: func [ y ][ current-face/size/y - y ]
@@ -394,7 +394,6 @@ face-to-page: func [
 		/Length none
 	    ]
 	    stream
-
 	    ( reduce [ current-face/color/1 / 255 current-face/color/2 / 255 current-face/color/3 / 255 ] ) rg
 	    0 0 m
 	    ( reduce [ face-box/3 0 'l face-box/3 face-box/4 'l 0 face-box/4 'l 'h 'f] )
@@ -406,15 +405,13 @@ face-to-page: func [
     ]
     
     contents: copy contents
-    resources: copy resources
     forall contents [ insert contents 'Xs first+ contents ]
-    forall resources [ insert resources 'Xs first+ resources ]
 
     obj name  compose/deep [ dict [ /Type /Page
 			/Parent Xs pages
-			/Contents refSort [ Xs background ( contents) ]
+			/Contents [ Xs background ( contents) ]
 			/MediaBox get-media-box 
-			/Resources (either 2 = length? resources [ resources ][ reduce [ resources ] ] )
+			/Resources Xs (resources)
 		] ]
 
 ]
