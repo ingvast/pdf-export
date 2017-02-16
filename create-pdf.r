@@ -135,6 +135,16 @@ xrefs: copy []
 ;<</Type /Catalog /Pages 2 0 R>>
 ;endobj
 
+XsIf: func [ 'name /local i] [
+    ? name
+    either i: find names name [
+	reduce [ (index? i ) 0 'R]
+    ][
+	print ["Warning!" name "is not defined!" ]
+	[]
+    ]
+]
+
 Xs: func [ 'name /local i] [
     ? name
     either i: find names name [
@@ -388,7 +398,7 @@ face-to-page: func [
 
     face-box: first get-media-box f
 
-    either current-face/color [
+    if current-face/color [
 	stream 'background compose [
 	    dict [
 		/Length none
@@ -400,16 +410,13 @@ face-to-page: func [
 	    endstream
 	]
     ]
-    [
-	obj 'background [q Q ] ; dummy
-    ]
     
     contents: copy contents
     forall contents [ insert contents 'Xs first+ contents ]
 
     obj name  compose/deep [ dict [ /Type /Page
 			/Parent Xs pages
-			/Contents [ Xs background ( contents) ]
+			/Contents [ XsIf background ( contents) ]
 			/MediaBox get-media-box 
 			/Resources Xs (resources)
 		] ]
@@ -519,7 +526,7 @@ draw-to-stream: func [
 	    ]
 	    (
 		append strea 'BT
-		repend strea [ /F1 current-font/size 'Tf pair/x f/size/y - pair/y 'Td ]
+		repend strea [ /F1 current-font/size 'Tf pair/x f/size/y - pair/y - current-font/size 'Td ]
 		repend strea [ string 'Tj ]
 		append strea 'ET
 	    )
@@ -575,7 +582,7 @@ draw-to-stream: func [
 	]
 	stream
 
-	(strea)
+	(strea)  ; Remove the space in previous line
 	endstream
     ]
 ]
