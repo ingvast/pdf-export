@@ -82,7 +82,7 @@ obj 'resources [
 
 parse-face: func [
     face [object!]
-    /local strea
+    /local ;strea
 ][
     strea: copy []
 
@@ -100,8 +100,9 @@ parse-face: func [
     ]
 
     if  block? p: face/effect [
-	while p: find p 'draw [
-	    append strea compose [ q ( draw-to-stream 'anything p face ) Q ]
+	while [p: find p 'draw] [
+	    append strea compose [ q ( draw-to-stream/noregister 'anything p/2 face ) Q ]
+	    p: skip p  2
 	]
     ]
     if face/text [
@@ -114,36 +115,57 @@ parse-face: func [
 	]
     ]
     pane: get in face 'pane
-    unless block? :pane [ pane: reduce [ :pane ] ]
-    foreach p pane [
-	case [
-	    object? :pane [
+    if :pane [
+	unless block? :pane [ pane: reduce [ :pane ] ]
+	foreach p pane [
+	    case [
+		object? :pane [
+		    append strea 'q
+		    append strea parse-face p
+		    append strea 'Q
+		]
+		function? :pane [ print "Transformation of functional panes not implemented" ]
+		true	    [  print [ "Unknown object in pane!" type? :p ] ]
 	    ]
-	    function? :pane [ print "Transformation of functional panes not implemented" ]
-	    true	    [  print [ "Unknown object in pane!" type? :p ] ]
 	]
     ]
+    strea
 ]
 
 
+unview/all
+
+strea: parse-face f
 
 stream 'face-text compose [
-    dict [ /Length none ] 
+    dict [ /Length none ]
     stream
-    q 
-    BT translate-fontname f/font/name 12 Tf
-    to-rgb f/font/color rg 
-    ( unpair (as-pair 0 f/size/y ) + ( 1x-1 * caret-to-offset f f/text ) - as-pair 0 f/font/size ) Td
-    (f/text) Tj
-    ET
-    Q
+    (strea)
     endstream
 ]
+o: last objs
+o/proc-func
 
-draw-to-stream 'cont f/effect/draw f
+comment [
 
-face-to-page 'page f [ cont face-text ]  'resources 
+    stream 'face-text compose [
+	dict [ /Length none ] 
+	stream
+	q 
+	BT translate-fontname f/font/name 12 Tf
+	to-rgb f/font/color rg 
+	( unpair (as-pair 0 f/size/y ) + ( 1x-1 * caret-to-offset f f/text ) - as-pair 0 f/font/size ) Td
+	(f/text) Tj
+	ET
+	Q
+	endstream
+    ]
 
-write %test.pdf compose-file 
+    draw-to-stream 'cont f/effect/draw f
+
+    face-to-page 'page f [ cont face-text ]  'resources 
+
+    write %test.pdf compose-file 
+]
 
 
