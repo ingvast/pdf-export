@@ -8,7 +8,7 @@ view/new layout [
 	draw [
 	    pen none
 	    fill-pen red
-	    font current-font
+	    font current-font 
 	    text 50x50 "Draw text" vectorial
 	    line-width 5
 	    pen blue
@@ -49,21 +49,31 @@ font-translations: [
     "Times"		Times-Roman
     "font-serif"	Times-Roman
 ]
+
 translate-fontname: func [ name [string! word! ] /local new ] [
     if word? name [ name: to-string name ]
     new: any [ select font-translations name to-word name ]
-    append used-fonts new
     to-refinement new
+]
+
+use-font: func [ name /local use-name ][
+    append used-fonts use-name: translate-fontname name
+    use-name
+]
+    
+
+reduce-fonts: func [] [
+    used-fonts: union used-fonts []
 ]
 
 create-fonts-resource: func [
     /local dict
 ][
-    used-fonts: union used-fonts []
-    dict: copy []
+    dict: copy [
+    ]
     foreach x used-fonts [
-	repend dict  [ to-refinement x 'Xs x ]
-	obj x compose/deep [
+	repend dict  [ x 'Xs to-word x ]
+	obj to-word x compose/deep [
 	    dict [
 		/Type /Font
 		/Subtype /Type1
@@ -73,10 +83,46 @@ create-fonts-resource: func [
     ]
     obj 'fonts-resource compose [ dict (reduce [ dict ] ) ]
 ]
+
+{
+Exampe of how fonts should be organized
+obj page
+<<  /Type /Page
+    /Parent pages
+    /Contents [ conts ]
+    /MediaBox [ x y x y]
+    /Resources resources
+>>
+endobj
+obj conts
+<<>>
+endobj
+obj resources
+<<  /Font fonts
+    /Xref xrefs
+>>
+endobj
+obj fonts
+<<  /Helvetica helvetica
+    /Times-Roman times-roman
+>>
+endobj
+obj helvetica
+<<  /Type /Font
+    /Subtype /Type1
+    /BaseFont /Helvetica
+>>
+endobj
+obj times-roman
+<<  /Type /Font
+    /Subtype /Type1
+    /BaseFont /Times-Roman
+>>
+}
     
 obj 'resources [
     dict [
-	/Font Xs fonts-resource
+	/Font dict [ Xs fonts-resource ]
     ]
 ] 
 
@@ -107,8 +153,8 @@ parse-face: func [
     ]
     if face/text [
 	append strea compose [
-	    BT translate-fontname face/font/name (face/font/size) Tf
-	    to-rgb face/font/color rg 
+	    BT (use-font face/font/name) (face/font/size) Tf
+	    (to-rgb face/font/color) rg 
 	    ( unpair (as-pair 0 face/size/y ) + ( 1x-1 * caret-to-offset face face/text ) - as-pair 0 face/font/size ) Td
 	    (face/text) Tj
 	    ET
@@ -133,7 +179,6 @@ parse-face: func [
 ]
 
 
-unview/all
 
 strea: parse-face f
 
@@ -146,13 +191,13 @@ stream 'face-text compose [
 o: last objs
 o/proc-func
 
-comment [
 
+comment [
     stream 'face-text compose [
 	dict [ /Length none ] 
 	stream
 	q 
-	BT translate-fontname f/font/name 12 Tf
+	BT use-font f/font/name 12 Tf
 	to-rgb f/font/color rg 
 	( unpair (as-pair 0 f/size/y ) + ( 1x-1 * caret-to-offset f f/text ) - as-pair 0 f/font/size ) Td
 	(f/text) Tj
@@ -160,12 +205,15 @@ comment [
 	Q
 	endstream
     ]
-
-    draw-to-stream 'cont f/effect/draw f
-
-    face-to-page 'page f [ cont face-text ]  'resources 
-
-    write %test.pdf compose-file 
 ]
+
+reduce-fonts
+create-fonts-resource
+
+;draw-to-stream 'cont f/effect/draw f
+
+face-to-page 'page f [ face-text ]  'resources 
+
+write %test.pdf compose-file 
 
 
