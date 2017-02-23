@@ -71,6 +71,12 @@ do to-rebol-file rejoin [ get-env("BIOSERVO") %/Tools/rebol/libs/printf.r ]
 space: #" "
 
 Z: func [ msg con][ print rejoin [ msg ": " mold con ] con]
+
+to-rgb: func [ rgb [tuple!] ][
+    reduce [ rgb/1 / 255 rgb/2 / 255 rgb/3 / 255 ]
+]
+unpair: func [ p [pair!] ][ reduce [ p/1 p/2 ] ]
+
 pdf-bindings: make object! [
     ; Streams
     q: 'q   
@@ -188,20 +194,6 @@ do-functions: func [ blk /local rslt ret ][
     rslt
 ]
 
-convert-strings: func [ blk ][
-    error! "LKjlkJ"
-    forall blk [
-	case [
-	    block? first blk [
-		convert-strings first blk
-	    ]
-	    string? blk [
-		change blk rejoin [ "(" blk ")" ]
-	    ]
-	]
-    ]
-]
-
 
 to-pdf-string: func [ blk /local str p ] [
     str: copy ""
@@ -226,6 +218,12 @@ to-pdf-string: func [ blk /local str p ] [
 	    ]
 	    image? first blk [
 		append str copy/part skip p: mold to-binary first blk 2 back tail p
+	    ]
+	    pair? first blk [
+		repend str form unpair first blk
+	    ]
+	    tuple? first blk [
+		repend str form to-rgb first blk
 	    ]
 	    true [
 		append str mold first blk
@@ -596,7 +594,7 @@ compose-file: func [ ]
 [
     str: copy "%PDF-1.6"
     forall objs [ 
-	print [ "Procesing object" objs/1/name ]
+	print [ "Processing object" objs/1/name ]
 	objs/1/proc-func
 	append str newline
 	append xrefs length? str

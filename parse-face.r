@@ -3,18 +3,18 @@ REBOL [
 
 do %create-pdf.r
 
-view/new layout [
-    f: area "asdfads" green  200x500 wrap effect [
+view/new  layout [
+     f: area "asdfads" green  200x500 wrap effect [
 	draw [
 	    pen blue
 	    fill-pen red
 	    font current-font 
 	    text 50x50 "Draw text" 
-	    line-width 5
+	    line-width 3
 	    pen blue
 	    line 50x74 150x74
 	] ]
-	edge [ size: 20x1 color: black ]
+	edge [ size: 20x20 color: black ]
 	font [ name: "times" ]
 ]
 
@@ -24,14 +24,9 @@ to-rgb: func [ rgb [tuple!] ][
 ]
 unpair: func [ p [pair!] ][ reduce [ p/1 p/2 ] ]
 }
-f/para/scroll: 0x50
 show f
 
 
-to-rgb: func [ rgb [tuple!] ][
-    reduce [ rgb/1 / 255 rgb/2 / 255 rgb/3 / 255 ]
-]
-unpair: func [ p [pair!] ][ reduce [ p/1 p/2 ] ]
 
 obj 'catalog [ dict
     [ /Type /Catalog
@@ -184,13 +179,35 @@ parse-face: func [
 		- edge/y
 	    append strea compose [
 		BT (use-font face/font/name) (face/font/size) Tf
-		(to-rgb face/font/color) rg 
+		(face/font/color) rg 
 		( reduce [ x y ] )
 		Td
 		(copy/part line-info/start line-info/num-chars) Tj
 		ET
 	    ]
 	    n: n + 1
+	]
+    ]
+    if all [ face/edge face/edge/size face/edge/color ][
+	use [ edge size ][
+	    edge: face/edge/size size: face/size
+	    repend strea [
+		face/edge/color 'rg
+		0 0 'm
+		edge 'l
+		edge/x size/y - edge/y 'l
+		size/x - edge/x size/y - edge/y 'l
+		size 'l
+		0 size/y 'l
+		'h  'f
+		0 0 'm
+		edge 'l
+		size/x - edge/x edge/y 'l
+		size/x - edge/y size/y - edge/y 'l
+		size 'l
+		size/x 0 'l
+		'h 'f
+	    ]
 	]
     ]
     pane: get in face 'pane
