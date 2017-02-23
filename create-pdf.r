@@ -378,8 +378,8 @@ current-font: make face/font [  ]
 if system/version/4 == 4
 [
    current-font/name: "/usr/share/fonts/gnu-free/FreeSans.ttf"
-   current-font/name: "/usr/share/fonts/msttcore/times.ttf"
-    current-font/size: 24
+   ;current-font/name: "/usr/share/fonts/msttcore/times.ttf"
+    current-font/size: 12
 ]
 view/new layout [ box effect[draw [ font current-font text "test" font current-font text "jj" vectorial]]] unview/all
 
@@ -527,7 +527,7 @@ draw-to-stream: func [
 	    ]
 	    (
 		append strea 'BT
-		repend strea [ /Times-Roman current-font/size 'Tf pair/x f/size/y - pair/y - current-font/size 'Td ]
+		repend strea [ use-font current-font current-font/size 'Tf pair/x f/size/y - pair/y - current-font/size 'Td ]
 		repend strea [ string 'Tj ]
 		append strea 'ET
 	    )
@@ -536,7 +536,6 @@ draw-to-stream: func [
 	    'font set font object!
 	    (
 		current-font: font
-		use-font font
 	    )
 	]
 	set-current-env: does [

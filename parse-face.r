@@ -4,18 +4,29 @@ REBOL [
 do %create-pdf.r
 
 view/new layout [
-    f: text "Face text" green  500x500 effect [
+    f: area "asdfads" green  200x500 wrap effect [
 	draw [
-	    pen none
+	    pen blue
 	    fill-pen red
 	    font current-font 
-	    text 50x50 "Draw text" vectorial
+	    text 50x50 "Draw text" 
 	    line-width 5
 	    pen blue
 	    line 50x74 150x74
 	] ]
-	edge [ size: 1x1 color: black ]
+	edge [ size: 20x1 color: black ]
+	font [ name: "times" ]
 ]
+
+f/text: {
+to-rgb: func [ rgb [tuple!] ][
+    reduce [ rgb/1 / 255 rgb/2 / 255 rgb/3 / 255 ]
+]
+unpair: func [ p [pair!] ][ reduce [ p/1 p/2 ] ]
+}
+f/para/scroll: 0x50
+show f
+
 
 to-rgb: func [ rgb [tuple!] ][
     reduce [ rgb/1 / 255 rgb/2 / 255 rgb/3 / 255 ]
@@ -42,11 +53,14 @@ obj 'info [ dict [
 
 used-fonts: copy []
 font-translations: [
+    "helvetica"		Helvetica
     "arial"		Helvetica
     "font-sans-serif"	Helvetica
+    "FreeSans"		Helvetica
     "Courier"		Courier
     "font-fixed"	Courier
     "Times"		Times-Roman
+    "Times-Roman"	Times-Roman
     "font-serif"	Times-Roman
 ]
 
@@ -143,7 +157,7 @@ parse-face: func [
     
     if face/color [
 	repend strea [
-	    rgb face/color 'rg
+	    to-rgb face/color 'rg
 	    0 0 unpair face/size 're
 	]
     ]
@@ -159,12 +173,24 @@ parse-face: func [
 	]
     ]
     if face/text [
-	append strea compose [
-	    BT (use-font face/font/name) (face/font/size) Tf
-	    (to-rgb face/font/color) rg 
-	    ( unpair (as-pair 0 face/size/y ) + ( 1x-1 * caret-to-offset face face/text ) - as-pair 0 face/font/size ) Td
-	    (face/text) Tj
-	    ET
+	line-info: make system/view/line-info []
+	n: 0
+	while [  textinfo face line-info n ][
+	    edge: either all [ face/edge face/edge/size ][ face/edge/size ] [ 0x0 ]
+	    x: line-info/offset/x + edge/x
+	    y: face/size/y
+		- line-info/offset/y
+		- face/font/size
+		- edge/y
+	    append strea compose [
+		BT (use-font face/font/name) (face/font/size) Tf
+		(to-rgb face/font/color) rg 
+		( reduce [ x y ] )
+		Td
+		(copy/part line-info/start line-info/num-chars) Tj
+		ET
+	    ]
+	    n: n + 1
 	]
     ]
     pane: get in face 'pane
@@ -198,26 +224,9 @@ stream 'face-text compose [
 o: last objs
 o/proc-func
 
-
-comment [
-    stream 'face-text compose [
-	dict [ /Length none ] 
-	stream
-	q 
-	BT use-font f/font/name 12 Tf
-	to-rgb f/font/color rg 
-	( unpair (as-pair 0 f/size/y ) + ( 1x-1 * caret-to-offset f f/text ) - as-pair 0 f/font/size ) Td
-	(f/text) Tj
-	ET
-	Q
-	endstream
-    ]
-]
-
 reduce-fonts
 create-fonts-resource
 
-;draw-to-stream 'cont f/effect/draw f
 
 face-to-page 'page f [ face-text ]  'resources 
 
