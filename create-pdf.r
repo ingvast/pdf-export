@@ -536,7 +536,7 @@ draw-to-stream: func [
 	    'font set font object!
 	    (
 		current-font: font
-		use-font probe font/name
+		use-font font
 	    )
 	]
 	set-current-env: does [

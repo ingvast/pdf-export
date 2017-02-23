@@ -56,7 +56,14 @@ translate-fontname: func [ name [string! word! ] /local new ] [
     to-refinement new
 ]
 
-use-font: func [ name /local use-name ][
+use-font: func [ name /local use-name tmp ][
+    if object? name [
+	either all [ string? name/name find name/name "/" ][
+	    name: copy/part tmp: next find/last name/name "/" any [ find/last tmp "." tail tmp ]
+	][
+	    name: name/name
+	]
+    ]
     append used-fonts use-name: translate-fontname name
     use-name
 ]
@@ -122,7 +129,7 @@ obj times-roman
     
 obj 'resources [
     dict [
-	/Font dict [ Xs fonts-resource ]
+	/Font Xs fonts-resource 
     ]
 ] 
 
