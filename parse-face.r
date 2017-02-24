@@ -3,22 +3,22 @@ REBOL [
 
 do %create-pdf.r
 
-view/new  layout [
-     f: area "asdfads" green  200x500 wrap effect [
+view/new  f: layout [
+     area "asdfads" green  200x500 wrap effect [
 	draw [
 	    pen blue
 	    fill-pen red
 	    font current-font 
 	    text 50x50 "Draw text" 
 	    line-width 3
-	    pen blue
-	    line 50x74 150x74
+	    pen cyan
+	    line 50x62 150x62
 	] ]
 	edge [ size: 20x20 color: black ]
 	font [ name: "times" ]
 ]
 
-f/text: {
+f/pane/1/text: {
 to-rgb: func [ rgb [tuple!] ][
     reduce [ rgb/1 / 255 rgb/2 / 255 rgb/3 / 255 ]
 ]
@@ -144,30 +144,42 @@ obj 'resources [
 
 parse-face: func [
     face [object!]
-    /local ;strea
+    /local strea
 ][
     strea: copy []
 
     fy-py: func [ y ][ face/size/y - y ]
     
-    if face/color [
+    if face/color [ ; background
 	repend strea [
-	    to-rgb face/color 'rg
-	    0 0 unpair face/size 're
+	    face/color 'rg
+	    0 0 face/size 're 'f
 	]
-    ]
-    if face/edge [
     ]
     if face/image [
     ]
 
     if  block? p: face/effect [
+	offset: any [
+		    all [ face/edge face/edge/size ]
+		    0x0
+	]
 	while [p: find p 'draw] [
-	    append strea compose [ q ( draw-to-stream/noregister 'anything p/2 face ) Q ]
+	    append strea compose [
+		q
+		( translating offset/x offset/y )
+		(
+		    draw-to-stream/noregister/size
+			'anything p/2
+			face
+			face/size - ( 2x2 * offset )
+		)
+		Q    
+	    ]
 	    p: skip p  2
 	]
     ]
-    if face/text [
+    if all [ face/text not find system/view/screen-face/pane face ] [
 	line-info: make system/view/line-info []
 	n: 0
 	while [  textinfo face line-info n ][
@@ -192,6 +204,7 @@ parse-face: func [
 	use [ edge size ][
 	    edge: face/edge/size size: face/size
 	    repend strea [
+		red 'RG
 		face/edge/color 'rg
 		0 0 'm
 		edge 'l
@@ -212,15 +225,17 @@ parse-face: func [
     ]
     pane: get in face 'pane
     if :pane [
+	print "*Parsing pane"
 	unless block? :pane [ pane: reduce [ :pane ] ]
 	foreach p pane [
 	    case [
-		object? :pane [
+		object? :p [
 		    append strea 'q
-		    append strea parse-face p
+		    append strea translating p/offset/x  p/offset/y
+		    append strea probe parse-face p
 		    append strea 'Q
 		]
-		function? :pane [ print "Transformation of functional panes not implemented" ]
+		function? :p [ print "Transformation of functional panes not implemented" ]
 		true	    [  print [ "Unknown object in pane!" type? :p ] ]
 	    ]
 	]
@@ -232,7 +247,7 @@ parse-face: func [
 
 strea: parse-face f
 
-stream 'face-text compose [
+stream 'content compose [
     dict [ /Length none ]
     stream
     (strea)
@@ -245,7 +260,7 @@ reduce-fonts
 create-fonts-resource
 
 
-face-to-page 'page f [ face-text ]  'resources 
+face-to-page 'page f [ content ]  'resources 
 
 write %test.pdf compose-file 
 

@@ -221,9 +221,11 @@ to-pdf-string: func [ blk /local str p ] [
 	    ]
 	    pair? first blk [
 		repend str form unpair first blk
+		append str #" "
 	    ]
 	    tuple? first blk [
 		repend str form to-rgb first blk
+		append str #" "
 	    ]
 	    true [
 		append str mold first blk
@@ -396,25 +398,13 @@ face-to-page: func [
 
     face-box: first get-media-box f
 
-    if current-face/color [
-	stream 'background compose [
-	    dict [
-		/Length none
-	    ]
-	    stream
-	    ( reduce [ current-face/color/1 / 255 current-face/color/2 / 255 current-face/color/3 / 255 ] ) rg
-	    0 0 m
-	    ( reduce [ face-box/3 0 'l face-box/3 face-box/4 'l 0 face-box/4 'l 'h 'f] )
-	    endstream
-	]
-    ]
     
     contents: copy contents
     forall contents [ insert contents 'Xs first+ contents ]
 
     obj name  compose/deep [ dict [ /Type /Page
 			/Parent Xs pages
-			/Contents [ XsIf background ( contents) ]
+			/Contents [( contents) ]
 			/MediaBox get-media-box 
 			/Resources Xs (resources)
 		] ]
@@ -426,10 +416,11 @@ draw-to-stream: func [
     cmd [ block!] {The draw commands to parse}
     f  [object!]  {The face from what to calculate original colours, and size}
     /noregister {Set this to only return a stream, do not register with name}
+    /size sz
     /local
 ][
 
-    fy-py: func [ y ][ f/size/y - y ]
+    fy-py: func [ y ][ ( any [ all [  sz sz/y ] f/size/y ])  - y ]
 
     strea: copy [ ]
     patterns: context [
@@ -462,8 +453,8 @@ draw-to-stream: func [
 	fill-pen:  [
 	    'fill-pen [
 		set color tuple! (
-		    current-fill: reduce [ color/1 / 255 color/2 / 255 color/3 / 255 ] 
-		    repend strea [ current-fill/1 current-fill/2 current-fill/3 'rg ]
+		    current-fill:  color 
+		    repend strea [ current-fill 'rg ]
 		) 
 		| 
 		none! ( current-fill: none )
@@ -472,8 +463,8 @@ draw-to-stream: func [
 	pen:  [
 	    'pen [
 		set color tuple! (
-		    current-pen: reduce [ color/1 / 255 color/2 / 255 color/3 / 255 ] 
-		    repend strea [ current-pen/1 current-pen/2 current-pen/3 'RG ]
+		    current-pen: color
+		    repend strea [ current-pen 'RG ]
 		) 
 		| none! ( current-pen: none )
 	    ]
@@ -525,7 +516,12 @@ draw-to-stream: func [
 	    ]
 	    (
 		append strea 'BT
-		repend strea [ use-font current-font current-font/size 'Tf pair/x f/size/y - pair/y - current-font/size 'Td ]
+		repend strea [
+		    use-font current-font
+		    current-font/size 'Tf
+		    pair/x fy-py pair/y + current-font/size
+		    'Td
+		]
 		repend strea [ string 'Tj ]
 		append strea 'ET
 	    )
@@ -537,8 +533,8 @@ draw-to-stream: func [
 	    )
 	]
 	set-current-env: does [
-	    if current-pen  [ repend strea [ current-pen/1 current-pen/2 current-pen/3 'RG ] ]
-	    if current-fill [ repend strea [ current-fill/1 current-fill/2 current-fill/3 'rg ] ]
+	    if current-pen  [ repend strea [ current-pen 'RG ] ]
+	    if current-fill [ repend strea [ current-fill 'rg ] ]
 	    repend strea [ current-line-width 'w ]
 	]
 
@@ -568,11 +564,7 @@ draw-to-stream: func [
     ]
 
     patterns/current-line-width: 1
-    patterns/current-pen: if f/color [ 
-			    reduce [ 255 - f/color/1 / 255 255 - f/color/2 / 255 255 - f/color/3 / 255 ]
-			  ][
-			    [ 1 1 1 ]
-			  ]
+    patterns/current-pen: any [ f/color white ]
 
     patterns/eval-patterns cmd
     
@@ -582,7 +574,6 @@ draw-to-stream: func [
 		/Length none
 	    ]
 	    stream
-
 	    (strea)  ; Remove the space in previous line
 	    endstream
 	]
