@@ -14,13 +14,13 @@ view/new  f: layout [
 	    pen cyan
 	    line 50x62 150x62
 	] ]
-	edge [ size: 20x20 color: black ]
+	edge [ size: 20x20 color: brown effect: 'bevel]
 	font [ name: "times" ]
 ]
 
 f/pane/1/text: {
 to-rgb: func [ rgb [tuple!] ][
-    reduce [ rgb/1 / 255 rgb/2 / 255 rgb/3 / 255 ]
+	reduce [ rgb/1 / 255 rgb/2 / 255 rgb/3 / 255 ]
 ]
 unpair: func [ p [pair!] ][ reduce [ p/1 p/2 ] ]
 }
@@ -201,11 +201,22 @@ parse-face: func [
 	]
     ]
     if all [ face/edge face/edge/size face/edge/color ][
-	use [ edge size ][
+	use [ edge size nw-color se-color ][
 	    edge: face/edge/size size: face/size
+	    nw-color: se-color: face/edge/color
+	    switch face/edge/effect [
+		ibevel [
+		    nw-color: hsv-to-rgb (rgb-to-hsv face/edge/color) - 0.0.63
+		    se-color: hsv-to-rgb (rgb-to-hsv face/edge/color) + 0.0.63
+		]
+		bevel [
+		    nw-color: hsv-to-rgb (rgb-to-hsv face/edge/color) + 0.0.63
+		    se-color: hsv-to-rgb (rgb-to-hsv face/edge/color) - 0.0.63
+		]
+	    ]
 	    repend strea [
 		red 'RG
-		face/edge/color 'rg
+		nw-color 'rg
 		0 0 'm
 		edge 'l
 		edge/x size/y - edge/y 'l
@@ -213,6 +224,7 @@ parse-face: func [
 		size 'l
 		0 size/y 'l
 		'h  'f
+		se-color 'rg
 		0 0 'm
 		edge 'l
 		size/x - edge/x edge/y 'l
