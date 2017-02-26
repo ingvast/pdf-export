@@ -16,7 +16,7 @@ view/new  f: layout [
 	] ]
 	edge [ size: 20x20 color: brown effect: 'bevel]
 	font [ name: "times" ]
-	field "Duche"
+	field "Dull alksjflasj l "
 ]
 
 f/pane/1/text: {

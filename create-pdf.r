@@ -1,4 +1,19 @@
-REBOL []
+REBOL [
+    title: {create-pdf out of view objects}
+    authour: {Johan Ingvast}
+    help: {
+	Call with one argument being a face object
+	>> create-pdf face
+	or 
+	>> create-pdf layout [ field "We are the champions" ]
+	In return you get a text stream. Save it to whatever file you want
+	>> write/binary %my.pdf create-pdf layout [ text "This is file my.pdf" ]
+	
+	One pixel in the face will be one point in the pdf document.
+
+}
+
+]
 
 pdf-stream-syntax: {
 taken from http://www.mactech.com/articles/mactech/Vol.15/15.09/PDFIntro/index.html
@@ -66,16 +81,15 @@ W 	clip.
 y 	curveto.
 }
 
+
+; TODO: make sure to write another native function for this 
 do to-rebol-file rejoin [ get-env("BIOSERVO") %/Tools/rebol/libs/printf.r ]
 
-space: #" "
 
+; Utility functions
 Z: func [ msg con][ print rejoin [ msg ": " mold con ] con]
 
-to-rgb: func [ rgb [tuple!] ][
-    reduce [ rgb/1 / 255 rgb/2 / 255 rgb/3 / 255 ]
-]
-unpair: func [ p [pair!] ][ reduce [ p/1 p/2 ] ]
+
 
 pdf-bindings: make object! [
     ; Streams
@@ -88,7 +102,7 @@ pdf-bindings: make object! [
     endstream: 'endstream
     re: 're
     h: 'h
-    |: '|
+    |: '| ; Wonder if this is needed
     Tf: 'Tf
     dict: 'dict
 ]
@@ -137,12 +151,13 @@ eval-draw: func [
 
 xrefs: copy []
 
-;1 0 obj
-;<</Type /Catalog /Pages 2 0 R>>
-;endobj
-
-XsIf: func [ 'name /local i] [
-    ? name
+XsIf: func [
+    {Use next word and see what reference it has in the object list.
+    Make a pdf reference (3 0 R) out of it. 
+    If no word matches, issue a warning}
+    'name
+    /local i
+] [
     either i: find names name [
 	reduce [ (index? i ) 0 'R]
     ][
@@ -151,8 +166,12 @@ XsIf: func [ 'name /local i] [
     ]
 ]
 
-Xs: func [ 'name /local i] [
-    ? name
+Xs: func [
+    {Use next word and see what reference it has in the object list.
+    Make a pdf reference (3 0 R) out of it.
+    Error if reference is not found}
+    'name /local i
+] [
     either i: find names name [
 	reduce [ (index? i ) 0 'R]
     ][
@@ -160,22 +179,36 @@ Xs: func [ 'name /local i] [
     ]
 ]
 
-refSort: func [ blk ][
+comment [
+refSort: func [
+    {Evaluate the argument block which should contain reference to objects.
+    Retrun the block sorted on the objects.}
+    blk [block!]
+][
     change blk sort/skip probe do-functions blk 3
     reduce [ blk ]
 ]
+]
 
-do-functions: func [ blk /local rslt ret ][
+do-functions: func [
+    {Evaluate the block and return it evaluated.
+    Do it recursively. 
+    Typically done before parsing pdf content before making string
+    }
+    blk [block!]
+    /local rslt ret
+][
     rslt: copy []
-    ;Z "call to do-cuntion with" mold blk
     while [ not empty? blk ] [
-	if all [ word? first blk value? first blk any-function? get first blk ]
-	[
+	if all [		; Replace function references with the function
+	    word? first blk
+	    value? first blk
+	    any-function? get first blk
+	] [
 	    change blk get first blk
 	]
 	either any-function? first blk
 	[
-	    ;Z "FUnction" blk
 	    ret: do/next blk
 	    unless unset? first ret [
 		append rslt first ret
@@ -195,40 +228,54 @@ do-functions: func [ blk /local rslt ret ][
 ]
 
 
-to-pdf-string: func [ blk /local str p ] [
+to-pdf-string: func [
+    {Takes a block of pdf graphics commands (encoded as rebol) and
+    converts it to a string that pdf can parse.
+    pairs are converted to two numbers.
+    tuples are converted to a number of decimals by dividing them with 255
+    TODO:
+	Images are  converted to a byte sequence
+    }
+    blk
+    /local str p space 
+] [
+
+    space: #" "
     str: copy ""
-    ;print [ type? blk copy/part _: mold blk any [find _ newline tail _ ]]
     forall blk [
+	arg: first blk
 	if new-line? blk [ if all [ not empty? str #" " = last str ] [ clear back tail str ] append str newline ]
 	case [
-	    block? first blk [
-		append str rejoin [ "[ " to-pdf-string first blk " ]" ]
+	    block? arg [
+		append str rejoin [ "[ " to-pdf-string arg " ]" ]
 	    ]
-	    'dict = first blk [
+	    'dict = arg [
 		unless block? second blk [ make error! "Dict must be following dict keyword" ]
 		append str rejoin [ "<<" to-pdf-string second blk " >>" ]
 		blk: next blk
 	    ]
-	    string? first blk [
-		append str rejoin [ "(" first blk ")" ]
+	    string? arg [
+		append str rejoin [ "(" arg ")" ]
 		append str space
 	    ]
-	    binary? first blk [
-		append str copy/part skip p: mold first blk 2 back tail p
+	    binary? arg [
+		append str copy/part skip p: mold arg 2 back tail p
 	    ]
-	    image? first blk [
-		append str copy/part skip p: mold to-binary first blk 2 back tail p
+	    image? arg [
+		append str copy/part skip p: mold to-binary arg 2 back tail p
 	    ]
-	    pair? first blk [
-		repend str form unpair first blk
+	    pair? arg [
+		repend str reform [ arg/x arg/y ]
 		append str #" "
 	    ]
-	    tuple? first blk [
-		repend str form to-rgb first blk
-		append str #" "
+	    tuple? arg [
+		repeat i length? arg [
+		    repend str form   ( pick arg i ) / 255
+		    append str #" "
+		]
 	    ]
 	    true [
-		append str mold first blk
+		append str mold arg
 		append str space
 	    ]
 	]
@@ -250,9 +297,10 @@ obj: func [ name blk /local obj ret ][
 	    block: do-functions block
 	]
 	to-string: func [/local str ][
+	    new-line block off
 	    str: reform [ index? find names name 0 "obj" newline ]
 	    append str to-pdf-string block
-	    repend str [ newline "endobj" ]
+	    repend str [ newline "endobj" newline ]
 	    str
 	]
     ]
@@ -275,12 +323,15 @@ stream: func [ name blk /local obj ret ][
 	to-string: func [/local str stream-str ] [
 	    str: reform [ index? find names name 0 "obj" newline ] 
 	    stream-str: to-pdf-string stream
+	    new-line dict off
 	    change next find dict/dict /Length (length? stream-str)
-	    append str to-pdf-string dict
-	    repend str [ newline "stream" newline]
-	    append str stream-str
-	    repend str [ newline "endstream" ]
-	    repend str [ newline "endobj" ]
+	    repend str  [
+		to-pdf-string dict newline
+		"stream" newline
+		stream-str newline
+		"endstream" newline
+		"endobj" newline
+	    ]
 	    str
 	]
     ]
@@ -307,6 +358,7 @@ draw-circle: func [ x y rx /xy ry /local dx dy c m ][
 	x - rx y     'c
     ]
 ]
+
 rotating: func [
 
     {Rotates the angle alpha (degrees) around (x,y)
@@ -362,7 +414,6 @@ scaling: func [
     x: any [ x 0 ]
     y: any [ y 0 ]
     scaley: any [ scaley scalex ]
-    ? scaley ? y
     reduce [ scalex 0 0 scaley 1 - scalex * x 1 - scaley * y 'cm ]
 ]
 
@@ -378,9 +429,9 @@ current-font: make face/font [  ]
 if system/version/4 == 4
 [
    current-font/name: "/usr/share/fonts/gnu-free/FreeSans.ttf"
-   ;current-font/name: "/usr/share/fonts/msttcore/times.ttf"
-    current-font/size: 12
+   current-font/size: 12
 ]
+; Make it the default font by using
 view/new layout [ box effect[draw [ font current-font text "test" font current-font text "jj" vectorial]]] unview/all
 
 
@@ -596,7 +647,7 @@ compose-file: func [ ]
     xref-str: copy ""
     append str rejoin [
 	"xref" newline
-	0 space 1 + length? objs newline
+	0 " " 1 + length? objs newline
 	"0000000000 65535 f " newline
 	rejoin map-each x xrefs [ join sprintf [ "%010d 00000 n " x]  newline ]
 	"trailer" newline 
