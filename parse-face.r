@@ -16,6 +16,7 @@ view/new  f: layout [
 	] ]
 	edge [ size: 20x20 color: brown effect: 'bevel]
 	font [ name: "times" ]
+	field "Duche"
 ]
 
 f/pane/1/text: {
@@ -242,8 +243,9 @@ parse-face: func [
 	foreach p pane [
 	    case [
 		object? :p [
+		    probe pos: as-pair p/offset/x face/size/y - ( p/offset/y + p/size/y)
 		    append strea 'q
-		    append strea translating p/offset/x  p/offset/y
+		    append strea translating pos/x pos/y
 		    append strea probe parse-face p
 		    append strea 'Q
 		]
