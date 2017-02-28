@@ -538,34 +538,55 @@ draw-to-stream: func [
 	    )
 	]
 	text: [
-	    'text
+	    'text ( render-mode: 0 )
 		some [ 
 		    set p pair! ( pair: p )
 		    |
 		    set s string! (string: s )
 		    |
-		    set word [ 'anti-aliased | 'vectorial | 'aliased ]
+		    set word [ 'anti-aliased | 'vectorial ( render-mode: 'vectorial )| 'aliased ]
 	    ]
 	    (
+		if render-mode = 'vectorial [
+		    render-mode:    case [
+			all [current-pen current-fill ][ 2 ]
+			all [ not current-pen current-fill ] [ 0 ]
+			all [ current-pen not current-fill ] [ 1 ]
+			all [ not current-pen  not current-fill ] [ 3 ]
+		    ]
+		][
+		    render-mode: 0
+		]
+
 		append strea 'BT
 		repend strea [
-		    use-font current-font
-		    current-font/size 'Tf
+		    'q
+		    'BT
+		]
+	    
+		if all [ current-pen render-mode = 0 ][ repend strea [ current-pen  'rg ] ]
+		repend strea [
+		    use-font current-font current-font/size 'Tf
+		    render-mode 'Tr
 		    pair/x fy-py pair/y + current-font/size
 		    'Td
+		    string 'Tj
 		]
-		repend strea [ string 'Tj ]
-		append strea 'ET
+		if all [ render-mode = 0 current-fill ][ repend strea [ current-fill  'rg ] ]
+		repend strea [
+		    'ET
+		    'Q
+		]
 	    )
 	]
 	font: [
-	    'font set font object!
+	    'font set fnt object!
 	    (
-		current-font: font
+		current-font: fnt
 	    )
 	]
 	set-current-env: does [
-	    if current-pen  [ repend strea [ current-pen 'RG ] ]
+	    if current-pen  [ repend strea [ current-pen 'rg ] ]
 	    if current-fill [ repend strea [ current-fill 'rg ] ]
 	    repend strea [ current-line-width 'w ]
 	]
@@ -574,23 +595,23 @@ draw-to-stream: func [
 	    
 	    set-current-env
 
-	    unless parse eval-draw pattern [
-		any [
-		      patterns/line 
-		    | patterns/polygon
-		    | patterns/line-width
-		    | patterns/fill-pen
-		    | patterns/pen
-		    | patterns/circle
-		    | patterns/translate
-		    | patterns/scale
-		    | patterns/rotate
-		    | patterns/push
-		    | patterns/text
-		    | patterns/font
+	    unless parse dbg: eval-draw pattern [
+		any [ here:
+		      line 
+		    | polygon
+		    | line-width
+		    | fill-pen
+		    | pen
+		    | circle
+		    | translate
+		    | scale
+		    | rotate
+		    | push
+		    | text
+		    | font here: (print mold here)
 		]
 	    ] [
-		print [ "Did not find end of pattern" pattern  newline "-----------------"]
+		make error! remold [ "Did not find end of pattern" here  newline "-----------------"]
 	    ]
 	]
     ]
