@@ -416,9 +416,6 @@ if system/version/4 == 4
    current-font/name: "/usr/share/fonts/gnu-free/FreeSans.ttf"
    current-font/size: 12
 ]
-; Make it the default font by using
-view/new layout [ box effect[draw [ font current-font text "test" font current-font text "jj" vectorial]]] unview/all
-
 
 face-to-page: func [
     name [word!]
@@ -770,6 +767,8 @@ parse-face: func [
     strea: copy []
 
     fy-py: func [ y ][ face/size/y - y ]
+
+    repend strea [ 0x0 face/size 're 'W ] ; Set clipping
     
     if face/color [ ; background
 	repend strea [
@@ -877,6 +876,27 @@ parse-face: func [
     strea
 ]
 
+face-to-pdf: func [
+    face
+    /local
+][
+    strea: parse-face face
+
+    stream 'content compose [
+	dict [ /Length none ]
+	stream
+	(strea)
+	endstream
+    ]
+
+    reduce-fonts
+    create-fonts-resource
+
+
+    face-to-page 'page f [ content ]  'resources 
+
+    to-binary compose-file 
+]
 
     
 
