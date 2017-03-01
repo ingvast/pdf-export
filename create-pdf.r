@@ -19,6 +19,7 @@ REBOL [
     * Handle alpha values
     * Handle gradients
     * Handle the rest of draw commands (arc ...)
+    * Make use of font given. (Write font data to pdf)
     }
     DONE: {
     * Rewrite printf routines
