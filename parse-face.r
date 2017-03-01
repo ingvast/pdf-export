@@ -13,9 +13,12 @@ view/new  f: layout [
 	draw [
 	    font current-font
 	    pen black
-	    text 10x10 "Pen blue fill red"
-	    text 10x22 "Normal write"
-	    text 10x200  "Vectorial write"
+	    text 10x10 "Pen (blue) fill )red("
+	    text 10x22 "Normal \write"
+	    text 0x200  "abcdefghijklmnopqrstuvxyz"
+	    text 0x212  "ABCDEFGHIJKLMNOPQRSTUVXYZ"
+	    text 0x224  {!"#Â¤%&/()=?@{[]}\,.;:-_*}
+	    text 0x236  {<>|@}
 	    font big-font
 	    pen blue
 	    fill-pen none

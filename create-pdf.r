@@ -13,7 +13,6 @@ REBOL [
 
 }
     TODO: {
-    * Improve the printing of strings to do proper escapes
     * Clean up, hide scope
     * Fix some compressions
     * Handle images
@@ -23,6 +22,7 @@ REBOL [
     }
     DONE: {
     * Rewrite printf routines
+    * Improve the printing of strings to do proper escapes
     }
 
 ]
@@ -234,6 +234,7 @@ to-pdf-string: func [
     }
     blk
     /local str p space 
+	string from to
 ] [
 
     space: #" "
@@ -251,7 +252,14 @@ to-pdf-string: func [
 		blk: next blk
 	    ]
 	    string? arg [
-		append str rejoin [ "(" arg ")" ]
+		string-replacements: [
+		    "\" "\\"
+		    "(" "\("
+		    ")" "\)"
+		]
+		string: copy arg
+		foreach [ from to ] string-replacements [ replace/all string from to ]
+		append str rejoin [ "(" string ")" ]
 		append str space
 	    ]
 	    binary? arg [
