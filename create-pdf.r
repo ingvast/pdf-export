@@ -12,6 +12,18 @@ REBOL [
 	One pixel in the face will be one point in the pdf document.
 
 }
+    TODO: {
+    * Improve the printing of strings to do proper escapes
+    * Clean up, hide scope
+    * Fix some compressions
+    * Handle images
+    * Handle alpha values
+    * Handle gradients
+    * Handle the rest of draw commands (arc ...)
+    }
+    DONE: {
+    * Rewrite printf routines
+    }
 
 ]
 
@@ -80,10 +92,6 @@ w 	'setlinewidth.
 W 	clip.
 y 	curveto.
 }
-
-
-; TODO: make sure to write another native function for this 
-do to-rebol-file rejoin [ get-env("BIOSERVO") %/Tools/rebol/libs/printf.r ]
 
 
 ; Utility functions
@@ -558,7 +566,6 @@ draw-to-stream: func [
 		    render-mode: 0
 		]
 
-		append strea 'BT
 		repend strea [
 		    'q
 		    'BT
@@ -637,6 +644,15 @@ draw-to-stream: func [
 compose-file: func [
     /local str
 ] [
+
+    fill-zeros: func [
+	number 
+	digits
+	/local s
+    ][
+	head change skip insert/dup copy "" "0" digits negate length? s: to-string number s
+    ]
+
     str: copy "%PDF-1.6"
     foreach o objs [ 
 	print [ "Processing object" o/name ]
@@ -653,7 +669,7 @@ compose-file: func [
 	"xref" newline
 	0 " " 1 + length? objs newline
 	"0000000000 65535 f " newline
-	rejoin map-each x xrefs [ join sprintf [ "%010d 00000 n " x]  newline ]
+	rejoin map-each x xrefs [ rejoin [ fill-zeros x 10 " 00000 n "  newline ] ]
 	"trailer" newline 
 	to-pdf-string do-functions [dict [
 	    /Size add length? xrefs 1 
