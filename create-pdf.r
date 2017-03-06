@@ -312,7 +312,7 @@ obj: func [ name blk /local obj ret ][
     last objs
 ]
 
-stream: func [ name blk /local obj ret ][
+stream: func [ name blk /local obj ret stream ][
     append names name
     append objs context [
 	type: 'stream
@@ -779,7 +779,7 @@ obj conts
 endobj
 obj resources
 <<  /Font fonts
-    /Xref xrefs
+    /XObject xrefs
 >>
 endobj
 obj fonts
@@ -806,6 +806,26 @@ obj 'resources [
     ]
 ] 
 
+register-image: func [
+    img [image!]
+][
+    stream 'image compose/deep [
+	dict [
+	    /Type /XObject
+	    /Subtype /Image
+	    /Width (img/size/x)
+	    /Height (img/size/y)
+	    /ColorSpace /DeviceRGB
+	    /BitsPerComponent 8
+	    /Length none
+	    /Filter /ASCIIHexDecode
+	]
+	stream
+	(img)
+	endstream
+    ]
+]
+
 parse-face: func [
     face [object!]
     /local strea
@@ -823,6 +843,7 @@ parse-face: func [
 	]
     ]
     if face/image [
+	reference: register-image face/image
     ]
 
     if  block? p: face/effect [
@@ -921,6 +942,8 @@ parse-face: func [
     ]
     strea
 ]
+
+
 
 face-to-pdf: func [
     face

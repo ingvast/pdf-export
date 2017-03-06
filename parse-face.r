@@ -31,6 +31,8 @@ view/new  f: layout [
 	edge [ size: 20x20 color: brown effect: 'bevel]
 	font [ name: "times" ]
 	field "Dull alksjflasj l loapoppp o hej. piipiip"
+	btn: btn "OK" #"^w" [univew]
+	image logo.gif
 ]
 
 ;f/pane/1/text: system/license
