@@ -40,4 +40,6 @@ show f
 
 write/binary %test.pdf face-to-pdf f
 
+layout [ f2: box 200x200 effect [ draw [ line 100x100 200x100 200x200 c ] ] ]
+write/binary %test.pdf face-to-pdf f
 

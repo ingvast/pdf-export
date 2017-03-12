@@ -14,7 +14,7 @@ REBOL [
 			/image2 N 0 R
 		    ]
 		]
-		Content: 
+		Contents: 
 	    ]
 	]
     ]
@@ -164,8 +164,11 @@ base-obj!: make object! [
 	]
     ]
     to-string: func[ /is-stream ] [
-	append string to-pdf-string header
-	append string newline
+	string: copy ""
+	if header [
+	    append string to-pdf-string header
+	    append string newline
+	]
 	append string "<<^/"
 	use [ val ][
 	    foreach field dict [
@@ -180,7 +183,7 @@ base-obj!: make object! [
 	    ]
 	]
 	append string ">>^/"
-	unless is-stream [ repend string [ footer newline ] ]
+	if all [ footer  not is-stream ] [ repend string [ footer newline ] ]
 	string
     ]
 ]
@@ -188,8 +191,8 @@ base-obj!: make object! [
 base-stream!: make base-obj! [
     Type: /stream
     to-string*: :to-string
-    stream-start: "stream"
-    stream-end: "endstream"
+    stream-start: 'stream
+    stream-end: 'endstream
 
     append dict 'Length
 
@@ -202,7 +205,10 @@ base-stream!: make base-obj! [
 	append string stream-start
 	append string newline
 	append string stream-string
-	repend string [ newline stream-end newline footer ]
+	append string newline
+	if stream-end [ repend string [ stream-end newline ] ]
+	if footer [ repend string  [ footer newline ] ]
+	string
     ]
     init: func [ spec ][
 	stream: :spec
@@ -212,7 +218,7 @@ base-stream!: make base-obj! [
 
 pages-dict!: make base-obj! [
     Type: /Pages
-    append dict [ Type Kids Count ]
+    append dict [ Type Kids Count Parent ]
     Parent:  none
     Kids: []
     Count: does [length? Kids ]
@@ -240,26 +246,26 @@ page-dict!: make base-obj! [
     Type: /Page
     Parent: 'required
     MediaBox: 'required
-    Content:  'required
-    Resourses: none
+    Contents:  'required
+    Resources: none
 
-    append dict [ Parent Resourses MediaBox Content ]
+    append dict [ Type Parent Resources MediaBox Contents ]
 
     set-mediaBox: func [ re [ block! ] ][
 	MediaBox: re
     ]
     add-content: func [ cont ][
 	unless block? cont [ cont: reduce [ cont ] ]
-	unless block? Content [ Content: copy [] ]
+	unless block? Contents [ Contents: copy [] ]
 	foreach c  cont [
 	    unless all [ object? c c/Type = 'stream ] [
 		make error! rejoin [ {Not a valid content} mold c ]
 	    ]
-	    append Content c
+	    append Contents c
 	]
     ]
     add-resource: func [ res ][
-	unless res/Type = 'Resource [
+	unless res/Type = /Resource [
 	    make error! rejoin [ {Not a valid resource} mold res ]
 	]
 	Resources: res
@@ -299,8 +305,9 @@ resources-dict!: make base-obj! [
     Type: /Resource
     Font: none
     XObject: none
+    ExtGState: none
     ProcSet: [ /PDF /Text /ImageB /ImageC /ImageI ]
-    append dict [ Font XObject ProcSet ]
+    append dict [ Font XObject ProcSet ExtGState ]
 ]
 
 
@@ -313,9 +320,9 @@ catalog-dict!: make base-obj! [
 	if word? p [ p: get p ]
 	unless all [
 	    object? p 
-	    p/Type == /Pages
+	    p/Type = /Pages
 	][
-	    make error! rejoin [ "Content should reference pages not:" p ]
+	    make error! rejoin [ "Contents should reference pages, not:" p ]
 	]
 	p/Parent: self
 	Pages: p
@@ -331,30 +338,37 @@ catalog-dict!: make base-obj! [
 xref-obj!: make base-obj! [
     Type: /xref
     fill-zeros: func [ number digits /local s ][
-	head change skip insert/dup copy "" "0" digits negate length? s: to-string number s
+	head change skip insert/dup copy "" "0" digits negate length? s: system/words/to-string number s
     ]
 
-    header: "xref"
-    footer: ""
+    header: 'xref
+    footer: none
     objs: 'reqired
     string: ""
     to-string:  func [ ][
-	append str rejoin [
+	string: copy ""
+	counts:  index? find obj-list self
+	append string rejoin [
 	    header newline
-	    0 " " 1 + length? objs newline
+	    0 " " counts newline
 	    "0000000000 65535 f " newline
 	    rejoin map-each x objs [
+		if x = self [ break ]
 		rejoin [ fill-zeros any [ x/obj-position 0 ] 10 " 00000 n "  newline ]
 	    ]
-	    footer newline
 	]
+	if footer [ append string [ footer newline ] ]
+	string
+    ]
+    init: func [ blk [block!] {List of objects to put in cross reference table} ][
+	objs: copy blk
     ]
 ]
 
 trailer-dict!: make base-stream! [
     Type: /trailer
-    header: "trailer"
-    stream-start: "startxref"
+    header: 'trailer
+    stream-start: 'startxref
     stream-end: none
     footer: "%%EOF"
     Info: ID: none
@@ -365,6 +379,14 @@ trailer-dict!: make base-stream! [
 	unless catalog/Type = /Catalog [
 	    make error! rejoin [ "Argument need to be a catalog. Is:" p ]
 	]
+	Root: catalog
+    ]
+    xref: none
+    to-string**: :to-string
+    to-string: does [
+	string: copy ""
+	stream: reduce [ xref/obj-position ]
+	to-string**
     ]
     init: func [ objs ][
 	foreach o objs [
@@ -374,30 +396,43 @@ trailer-dict!: make base-stream! [
 		    set-root o
 		]
 		/xref [
-		    stream: reduce [ xref/obj-position ]
-		    Size: length? xref/objs
+		    xref: o
+		    Size:  length? o/objs 
 		]
 	    ]
 	]
     ]
 ]
 
-create-pdf: func [ cata [object!] {A catalog object with all children done} ][
+create-pdf: func [
+    objs [block!] {A catalog object with all children done}
+    /local string
+][
+
+    foreach o objs [ o/check ]
+
+    string: copy "%PDF-1.6^/"
+    foreach o objs [
+	o/obj-position: length? string
+	append string o/to-string
+    ]
+    string
 ]
 
 ; --------------------------------------------------------------
     
 if error? err: try [
-    cont: create-obj base-stream! [  q 100 100 m 200 100 l 200 200 l 100 200 h f Q ]
-    page: create-obj page-dict! [ cont cont ]
+    cont: create-obj base-stream! [ q 10 w 0 1 0 RG 100 100 m 200 100 l 200 200 l 100 200 l b Q]
+    resource: create-obj resources-dict! []
+    page: create-obj page-dict! [ cont resource ]
     page/set-mediaBox [ 0 0 300 300 ]
     pages: create-obj pages-dict! [ page ]
     catalog: create-obj catalog-dict! [ pages ]
     xref: create-obj xref-obj! obj-list
-    trailer: create-obj trailer-dict! [ xref catalog]
+    trailer: create-obj trailer-dict! [ xref catalog ]
 
-    ;pdf: create-pdf catalog
-    ;write %test.pdf pdf
+    pdf: create-pdf obj-list
+    write %new.pdf pdf
 ] [
     err: disarm err
     ? err
