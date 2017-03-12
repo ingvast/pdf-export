@@ -285,19 +285,49 @@ page-dict!: make base-obj! [
 	]
     ]
 ]
+
 font-dict!: make base-obj! [
     Type: /Font
     Name: none
     Subtype: /Type1
     BaseFont: 'required
     append dict [ Type Subtype BaseFont ]
+    init: func [ spec ][
+	BaseFont: Name: to-refinement spec/1
+    ]
 ]
 
-fonts-dict!: make object! [
-    dict: []
+fonts-dict!: make base-obj! [
+    Type: /Fonts
+    dict: none
+    check: does [ true ]
     font-list: []
     add-font: func [ font-obj ][
-	append font-list [ font-obj/Name font-obj ]
+	append font-list reduce [ font-obj/Name font-obj ]
+    ]
+    init: func [ spec ][
+	unless block? spec [ spec: reduce [ spec ] ]
+	foreach f spec [
+	    if word? f [ f: get f ]
+	    add-font  f
+	]
+    ]
+    to-string: func[  ] [
+	string: copy ""
+	if header [
+	    append string to-pdf-string header
+	    append string newline
+	]
+	append string "<<^/"
+	foreach [f-name f-obj ] font-list [
+	    append string tab
+	    append string to-pdf-string  probe to-refinement ?? f-name
+	    append string tab
+	    append string to-pdf-string  f-obj  
+	    append string newline
+	]
+	append string ">>^/"
+	string
     ]
 ]
 
@@ -308,6 +338,18 @@ resources-dict!: make base-obj! [
     ExtGState: none
     ProcSet: [ /PDF /Text /ImageB /ImageC /ImageI ]
     append dict [ Font XObject ProcSet ExtGState ]
+    init: func [ spec ][
+	foreach s spec [
+	    if word? s [ s: get s ]
+	    switch s/Type [
+		/Fonts [
+		    font: s
+		]
+		/Images [
+		]
+	    ]
+	]
+    ]
 ]
 
 
@@ -422,9 +464,12 @@ create-pdf: func [
 ; --------------------------------------------------------------
     
 if error? err: try [
-    cont: create-obj base-stream! [ q 10 w 0 1 0 RG 100 100 m 200 100 l 200 200 l 100 200 l b Q]
-    resource: create-obj resources-dict! []
-    page: create-obj page-dict! [ cont resource ]
+    font: create-obj font-dict!  [ Times-Roman ]
+    fonts: create-obj fonts-dict! [ font ]
+    cont: create-obj base-stream! [ q 10 w 0 1 0 RG 100 100 m 200 100 l 200 200 l 100 200 l s Q]
+    text: create-obj base-stream! [ BT 0 0 0 rg /Times-Roman 18 Tf 100 100 Td (Hello) Tj ET ]
+    resource: create-obj resources-dict! [ fonts ]
+    page: create-obj page-dict! [ cont resource text ]
     page/set-mediaBox [ 0 0 300 300 ]
     pages: create-obj pages-dict! [ page ]
     catalog: create-obj catalog-dict! [ pages ]
