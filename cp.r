@@ -290,14 +290,12 @@ image-rgb-stream!: make base-stream! [
 		    BitsPerComponent Filter
     ]
     Type: /XObject
-    Name: none
     Subtype: /Image
     Width: Height: 'required
     ColorSpace: /DeviceRGB
     BitsPerComponent: 'required
     Filter: /ASCIIHexDecode
     init: func [ spec /local im ][
-	either word? spec/1 [ Name: spec/1 ][ make error! {Image name is needed} ]
 	spec: reduce spec
 	im: first spec
 	stream: spec
@@ -310,12 +308,11 @@ image-rgb-stream!: make base-stream! [
 
 font-dict!: make base-obj! [
     Type: /Font
-    Name: none
     Subtype: /Type1
     BaseFont: 'required
     append dict [ Type Subtype BaseFont ]
     init: func [ spec ][
-	BaseFont: Name: to-refinement spec/1
+	BaseFont: to-refinement spec/1
     ]
 ]
 
@@ -324,14 +321,14 @@ objs-dict!: make base-obj! [
     dict: none
     check: does [ true ]
     obj-list: []
-    add-obj: func [ obj ][
-	append obj-list reduce [ obj/Name obj ]
+    add-obj: func [ name obj ][
+	append obj-list reduce [ name obj ]
     ]
     init: func [ spec ][
 	unless block? spec [ spec: reduce [ spec ] ]
-	foreach o spec [
+	foreach [n o ]  spec [
 	    if word? o [ o: get o ]
-	    add-obj  o
+	    add-obj  n o
 	]
     ]
     to-string: func[  ] [
@@ -493,17 +490,21 @@ create-pdf: func [
 ; --------------------------------------------------------------
 
 image: xobjs: font: fonts: cont: text: resource: page: catalog: xref: trailer: none
-    
+
 if error? err: try [
     image: create-obj image-rgb-stream! [ logo.gif ]
-    xobjs: create-obj XObjects-dict! [ image ]
+    xobjs: create-obj XObjects-dict! [ logo.gif image ]
     
     font: create-obj font-dict!  [ Times-Roman ]
-    fonts: create-obj fonts-dict! [ font ]
+    font2: create-obj font-dict!  [ Helvetica ]
+    fonts: create-obj fonts-dict! [ Times-Roman font H font2 ]
     cont: create-obj base-stream! [
-	q 10 w 0 1 0 RG 100 100 m 200 100 l 200 200 l 100 200 l s Q
+	q 4  w 0 1 0 RG 100 100 m 200 100 l 200 200 l 100 200 l s Q
 	q 100 0 0 24 150 150 cm /logo.gif Do Q ]
-    text: create-obj base-stream! [ BT 0 0 0 rg /Times-Roman 18 Tf 100 100 Td (Hello) Tj ET ]
+    text: create-obj base-stream! [
+	BT 0 0 0 rg /Times-Roman 18 Tf 100 100 Td (Hello) Tj ET
+	BT 0 0 1 rg /H 18 Tf 200 100 Td (Blue) Tj ET
+    ]
     resource: create-obj resources-dict! [ fonts xobjs ]
     page: create-obj page-dict! [ cont resource text ]
     page/set-mediaBox [ 0 0 300 300 ]
@@ -513,10 +514,7 @@ if error? err: try [
     trailer: create-obj trailer-dict! [ xref catalog ]
 
     pdf: create-pdf obj-list
-    write %new.pdf pdf
+    true
 ] [
     err: disarm err
-    ? err
 ]
-
-
