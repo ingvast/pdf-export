@@ -89,7 +89,7 @@ to-pdf-string: func [
 		append str copy/part skip p: mold arg 2 back tail p
 	    ]
 	    image? arg [
-		append str copy/part skip p: mold to-binary arg 2 back tail p
+		append str copy/part skip p: mold to-binary arg/rgb 2 back tail p
 	    ]
 	    pair? arg [
 		repend str reform [ arg/x arg/y ]
@@ -215,7 +215,6 @@ base-stream!: make base-obj! [
     ]
 ]
 
-
 pages-dict!: make base-obj! [
     Type: /Pages
     append dict [ Type Kids Count Parent ]
@@ -286,6 +285,29 @@ page-dict!: make base-obj! [
     ]
 ]
 
+image-rgb-stream!: make base-stream! [
+    append dict [ Type Subtype Width Height ColorSpace
+		    BitsPerComponent Filter
+    ]
+    Type: /XObject
+    Name: none
+    Subtype: /Image
+    Width: Height: 'required
+    ColorSpace: /DeviceRGB
+    BitsPerComponent: 'required
+    Filter: /ASCIIHexDecode
+    init: func [ spec /local im ][
+	either word? spec/1 [ Name: spec/1 ][ make error! {Image name is needed} ]
+	spec: reduce spec
+	im: first spec
+	stream: spec
+	Width: im/size/x
+	Height: im/size/y
+	BitsPerComponent: 8
+    ]
+]
+
+
 font-dict!: make base-obj! [
     Type: /Font
     Name: none
@@ -297,19 +319,19 @@ font-dict!: make base-obj! [
     ]
 ]
 
-fonts-dict!: make base-obj! [
-    Type: /Fonts
+objs-dict!: make base-obj! [
+    Type: none
     dict: none
     check: does [ true ]
-    font-list: []
-    add-font: func [ font-obj ][
-	append font-list reduce [ font-obj/Name font-obj ]
+    obj-list: []
+    add-obj: func [ obj ][
+	append obj-list reduce [ obj/Name obj ]
     ]
     init: func [ spec ][
 	unless block? spec [ spec: reduce [ spec ] ]
-	foreach f spec [
-	    if word? f [ f: get f ]
-	    add-font  f
+	foreach o spec [
+	    if word? o [ o: get o ]
+	    add-obj  o
 	]
     ]
     to-string: func[  ] [
@@ -319,16 +341,22 @@ fonts-dict!: make base-obj! [
 	    append string newline
 	]
 	append string "<<^/"
-	foreach [f-name f-obj ] font-list [
+	foreach [name obj ] obj-list [
 	    append string tab
-	    append string to-pdf-string  probe to-refinement ?? f-name
+	    append string to-pdf-string  to-refinement name
 	    append string tab
-	    append string to-pdf-string  f-obj  
+	    append string to-pdf-string obj  
 	    append string newline
 	]
 	append string ">>^/"
 	string
     ]
+]
+fonts-dict!: make objs-dict! [
+    Type: /Fonts
+]
+XObjects-dict!: make objs-dict! [
+    Type: /XObjects
 ]
 
 resources-dict!: make base-obj! [
@@ -343,9 +371,10 @@ resources-dict!: make base-obj! [
 	    if word? s [ s: get s ]
 	    switch s/Type [
 		/Fonts [
-		    font: s
+		    Font: s
 		]
-		/Images [
+		/XObjects [
+		    XObject: s
 		]
 	    ]
 	]
@@ -456,19 +485,26 @@ create-pdf: func [
     string: copy "%PDF-1.6^/"
     foreach o objs [
 	o/obj-position: length? string
-	append string o/to-string
+	append string probe o/to-string
     ]
     string
 ]
 
 ; --------------------------------------------------------------
+
+image: xobjs: font: fonts: cont: text: resource: page: catalog: xref: trailer: none
     
 if error? err: try [
+    image: create-obj image-rgb-stream! [ logo.gif ]
+    xobjs: create-obj XObjects-dict! [ image ]
+    
     font: create-obj font-dict!  [ Times-Roman ]
     fonts: create-obj fonts-dict! [ font ]
-    cont: create-obj base-stream! [ q 10 w 0 1 0 RG 100 100 m 200 100 l 200 200 l 100 200 l s Q]
+    cont: create-obj base-stream! [
+	q 10 w 0 1 0 RG 100 100 m 200 100 l 200 200 l 100 200 l s Q
+	q 100 0 0 24 150 150 cm /logo.gif Do Q ]
     text: create-obj base-stream! [ BT 0 0 0 rg /Times-Roman 18 Tf 100 100 Td (Hello) Tj ET ]
-    resource: create-obj resources-dict! [ fonts ]
+    resource: create-obj resources-dict! [ fonts xobjs ]
     page: create-obj page-dict! [ cont resource text ]
     page/set-mediaBox [ 0 0 300 300 ]
     pages: create-obj pages-dict! [ page ]
