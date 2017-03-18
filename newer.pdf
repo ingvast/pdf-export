@@ -243,10 +243,6 @@ endstream
 endobj
 2 0 obj
 <<
-	/logo.gif	1 0 R
->>
-3 0 obj
-<<
 	/Length	24
 	/Type	/XObject
 	/Subtype	/Image
@@ -258,9 +254,14 @@ endobj
 	/Filter	/ASCIIHexDecode
 >>
 stream
-FF00000000FF00FF00FF00FF
+FFFFF00000FF00FF00FF00FF
 endstream
 endobj
+3 0 obj
+<<
+	/logo.gif	1 0 R
+	/pix	2 0 R
+>>
 4 0 obj
 <<
 	/Type	/Font
@@ -288,29 +289,30 @@ endobj
 >>
 8 0 obj
 <<
-	/Length	98
+	/Length	129
 >>
 stream
 
 q 4 w 0 1 0 RG 100 100 m 200 100 l 200 200 l 100 200 l s Q
 q 100 0 0 24 150 150 cm /logo.gif Do Q
+q 50 0 0 50 10 10 cm /pix Do Q
 endstream
 endobj
 9 0 obj
 <<
-	/Length	149
+	/Length	152
 >>
 stream
 
 BT 0 0 0 rg /Times-Roman 18 Tf 100 100 Td (Hello) Tj ET
-BT 0 0 1 rg /H 18 Tf 200 100 Td (Blue) Tj ET
-BT 0 0 1 rg /H2 18 Tf 200 80 Td (Finnair) Tj ET
+BT 0 0 1 rg /H 18 Tf 200 100 Td (Blue air) Tj ET
+BT 0 0 1 rg /H2 9 Tf 200 80 Td (Finnair) Tj ET
 endstream
 endobj
 10 0 obj
 <<
 	/Font	7 0 R
-	/XObject	2 0 R
+	/XObject	3 0 R
 	/ProcSet	[ /PDF /Text /ImageB /ImageC /ImageI ]
 >>
 endobj
@@ -337,11 +339,27 @@ endobj
 	/Pages	12 0 R
 >>
 endobj
+xref
+0 14
+0000000000 65535 f 
+0000000009 00000 n 
+0000014817 00000 n 
+0000015017 00000 n 
+0000015060 00000 n 
+0000015135 00000 n 
+0000015208 00000 n 
+0000015252 00000 n 
+0000015307 00000 n 
+0000015488 00000 n 
+0000015692 00000 n 
+0000015792 00000 n 
+0000015916 00000 n 
+0000015996 00000 n 
 trailer
 <<
-	/Size	0
+	/Size	15
 	/Root	13 0 R
 >>
 startxref
-16002
+16049
 %%EOF

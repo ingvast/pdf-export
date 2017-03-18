@@ -1,42 +1,11 @@
 REBOL [
-    document: [
-	Fonts: [ font1 font2 .... ]
-	Images: [ image1 image2 ]
-	Pages: [
-	    Page: [
-		Resources: [
-		    fonts: [ 
-			/font1 /font1
-			/font2 /font2
-		    ]
-		    XObjects: [
-			/image1 N 0 R
-			/image2 N 0 R
-		    ]
-		]
-		Contents: 
-	    ]
-	]
-    ]
-
-    doc: {
-    Make sure to divide the building of the pdf-document from parsing the face
-    Called with:
-	base-stream	the-stream
-	image-stream    the-image
-	resourses	Fonts Xobjects
-	page		resourses  content-streams
-	pages		page/pages
-	fonts
-
-    Methods:
-	pages	link inserts page/pages to kids and sets parent in kid
-	fonts	Add a font name (it will find the correct to use)
-
-    }
+    title: {PDF creation functions. Basics for building a pdf document}
+    author: {Johan Ingvast}
 ]
 
-pdf-lib: context [
+module: func [ block ][ context block ]
+
+pdf-lib: module [
     space: #" "
 
     to-pdf-string: func [
@@ -44,10 +13,9 @@ pdf-lib: context [
 	converts it to a string that pdf can parse.
 	pairs are converted to two numbers.
 	tuples are converted to a number of decimals by dividing them with 255
-	TODO:
-	    Images are  converted to a byte sequence
 	}
-	blk 
+	obj-list [block!] {A list of objects for the document}
+	blk  [block!] {The content to make string of, objects are converted to references}
 	/local str p 
 	    string from to
     ] [
@@ -68,13 +36,8 @@ pdf-lib: context [
 	    ]
 	    case [
 		block? arg [
-		    append str rejoin [ "[ " to-pdf-string arg " ]" ]
+		    append str rejoin [ "[ " to-pdf-string obj-list arg " ]" ]
 		]
-		;'dict = arg [
-		    ;unless block? second blk [ make error! "Dict must be following dict keyword" ]
-		    ;append str rejoin [ "<<" to-pdf-string second blk " >>" ]
-		    ;blk: next blk
-		;]
 		string? arg [
 		    string-replacements: [
 			"\" "\\"
@@ -102,11 +65,14 @@ pdf-lib: context [
 			append str space
 		    ]
 		]
+		logic? arg [
+		    append str either arg [ "true " ]["false "]
+		]
 		object? arg [
 			; If there is a object, assume it is a object representing 
 			; a pdf-object
 			; Hence write out id 0 R
-			append str form get-obj-reference arg
+			append str form get-obj-reference obj-list arg
 			append str space
 		]
 		true [
@@ -124,32 +90,24 @@ pdf-lib: context [
 	str
     ]
 
-    obj-list: copy []
 
-    set 'make-pdf-obj func [
-	obj [object!] {The base object to start from}
-	specification [block!] {A list of something that rather liberally will get parsed}
-	/local o
-    ][
-	append obj-list o: make obj [ ]
-	o/obj-id: length? obj-list
-	o/init specification
-	o
-    ]
 
-    get-obj-reference: func [ obj ][
-	reduce [ index? find obj-list obj 0 'R ]
+    get-obj-id: func [ obj-list obj ][ index? find obj-list obj ]
+
+    get-obj-reference: func [ obj-list obj ][
+	reduce [ get-obj-id obj-list obj  0 'R ]
     ]
 
     base-obj!: make object! [
-	header: does [ reduce [ obj-id 0 'obj ] ] ;Head should print the first line of object
+	header: func [ obj-list] [ reduce [ get-obj-id obj-list self 0 'obj ] ] ;Head should print the first line of object
 	footer: "endobj"
 	init: none
+	
+	Type: /base-obj!
 
 	dict: [
 	]
 
-	obj-id: none
 	obj-position: none
 	string: ""
 	check: func [
@@ -164,10 +122,10 @@ pdf-lib: context [
 		]
 	    ]
 	]
-	to-string: func[ /is-stream ] [
+	to-string: func[ obj-list /is-stream ] [
 	    string: copy ""
-	    if header [
-		append string to-pdf-string header
+	    if :header [
+		append string to-pdf-string obj-list header obj-list
 		append string newline
 	    ]
 	    append string "<<^/"
@@ -176,9 +134,9 @@ pdf-lib: context [
 		    val: get in self field
 		    if val [
 			append string tab
-			append string to-pdf-string reduce [ to-refinement field  ]
+			append string to-pdf-string obj-list reduce [ to-refinement field  ]
 			append string tab
-			append string to-pdf-string reduce [ val ] ; Execute function if necessary
+			append string to-pdf-string obj-list reduce [ val ] ; Execute function if necessary
 			append string newline
 		    ]
 		]
@@ -200,9 +158,9 @@ pdf-lib: context [
 	stream: []
 	Length: does [ length? stream-string ]
 	stream-string: ""
-	to-string: does [
-	    stream-string: to-pdf-string stream
-	    to-string*/is-stream
+	to-string: func [ obj-list ] [
+	    stream-string: to-pdf-string obj-list stream
+	    to-string*/is-stream obj-list
 	    append string stream-start
 	    append string newline
 	    append string stream-string
@@ -288,10 +246,11 @@ pdf-lib: context [
 
     image-rgb-stream!: make base-stream! [
 	append dict [ Type Subtype Width Height ColorSpace
-			BitsPerComponent Filter
+			BitsPerComponent Filter 
 	]
 	Type: /XObject
 	Subtype: /Image
+	Interpolate: False
 	Width: Height: 'required
 	ColorSpace: /DeviceRGB
 	BitsPerComponent: 'required
@@ -318,12 +277,12 @@ pdf-lib: context [
     ]
 
     objs-dict!: make base-obj! [
-	Type: none
+	Type: /objs-dict!
 	dict: none
 	check: does [ true ]
-	obj-list: []
+	value-list: []
 	add-obj: func [ name obj ][
-	    append obj-list reduce [ name obj ]
+	    append value-list reduce [ name obj ]
 	]
 	init: func [ spec ][
 	    unless block? spec [ spec: reduce [ spec ] ]
@@ -332,18 +291,18 @@ pdf-lib: context [
 		add-obj  n o
 	    ]
 	]
-	to-string: func[  ] [
+	to-string: func[ obj-list ] [
 	    string: copy ""
-	    if header [
-		append string to-pdf-string header
+	    if :header [
+		append string to-pdf-string obj-list header obj-list
 		append string newline
 	    ]
 	    append string "<<^/"
-	    foreach [name obj ] obj-list [
+	    foreach [name value ] value-list [
 		append string tab
-		append string to-pdf-string  to-refinement name
+		append string to-pdf-string obj-list reduce [ to-refinement name ]
 		append string tab
-		append string to-pdf-string obj  
+		append string to-pdf-string obj-list reduce [ value ]
 		append string newline
 	    ]
 	    append string ">>^/"
@@ -410,18 +369,18 @@ pdf-lib: context [
 	    head change skip insert/dup copy "" "0" digits negate length? s: system/words/to-string number s
 	]
 
-	header: 'xref
+	header: [ xref ]
 	footer: none
-	objs: 'reqired
+	;objs: 'reqired
 	string: ""
-	to-string:  func [ ][
+	to-string:  func [ obj-list ][
 	    string: copy ""
 	    counts:  index? find obj-list self
 	    append string rejoin [
 		header newline
 		0 " " counts newline
 		"0000000000 65535 f " newline
-		rejoin map-each x objs [
+		rejoin map-each x obj-list [
 		    if x = self [ break ]
 		    rejoin [ fill-zeros any [ x/obj-position 0 ] 10 " 00000 n "  newline ]
 		]
@@ -430,13 +389,13 @@ pdf-lib: context [
 	    string
 	]
 	init: func [ blk [block!] {List of objects to put in cross reference table} ][
-	    objs: copy blk
+	    ;objs: copy blk
 	]
     ]
 
     trailer-dict!: make base-stream! [
 	Type: /trailer
-	header: 'trailer
+	header: [trailer]
 	stream-start: 'startxref
 	stream-end: none
 	footer: "%%EOF"
@@ -452,10 +411,10 @@ pdf-lib: context [
 	]
 	xref: none
 	to-string**: :to-string
-	to-string: does [
+	to-string: func [ obj-list ] [
 	    string: copy ""
 	    stream: reduce [ xref/obj-position ]
-	    to-string**
+	    to-string** obj-list
 	]
 	init: func [ objs ][
 	    foreach o objs [
@@ -466,59 +425,125 @@ pdf-lib: context [
 		    ]
 		    /xref [
 			xref: o
-			Size:  length? o/objs 
+			;Size:  length? o/objs 
 		    ]
 		]
 	    ]
 	]
     ]
-
-    create-pdf: func [
-	objs [block!] {A catalog object with all children done}
-	/local string
+    
+    set 'prepare-pdf func [
+	/file-name file
     ][
+	context [
 
-	foreach o objs [ o/check ]
+	    file-name: file
 
-	string: copy "%PDF-1.6^/"
-	foreach o objs [
-	    o/obj-position: length? string
-	    append string probe o/to-string
+	    write: does [
+		either file-name [
+		    system/words/write file-name to-string 
+		][
+		    make error! "No filename given"
+		]
+	    ]
+
+	    obj-list: []
+	    
+	    add-obj: func [ obj ][
+		append obj-list obj
+	    ]
+
+	    check: does [
+		unless Catalog [ make error! {No catalog set} ]
+		foreach o obj-list [ o/check ]
+		'OK
+	    ]
+	    
+	    set-root: func [ catalog ] [
+		Root: catalog 
+	    ]
+	    Root: none	
+	    
+	    prepare: func [ /local xref trailer ] [
+		xref: make-obj pdf-lib/xref-obj!  [ obj-list ]
+		trailer: make-obj pdf-lib/trailer-dict! [ xref Catalog ]
+
+		trailer/Size: length? obj-list
+
+		check
+		
+	    ]
+
+	    to-string: func [
+		/root cat [object!] {The root object (a catalog)}
+		/local string
+		    xref trailer
+	    ][
+		if root [ set-root cat ]
+
+		prepare
+
+		string: copy "%PDF-1.6^/"
+		foreach o obj-list [
+		    o/obj-position: length? string
+		    append string o/to-string obj-list
+		]
+		string
+	    ]
+
+	    make-obj: func [
+		obj [object!] {Object prototype, decides how the specifiation should be treated}
+		specification [block!] {A list of something that rather liberally will get parsed}
+		/root {Mark that this object is the file's catalog to be referenced as root}
+		/local o
+	    ][
+		append obj-list o: make obj [ ]
+		o/init specification
+		if root [ set-root o ]
+		o
+	    ]
 	]
-	string
     ]
 ]
+
 
 ; --------------------------------------------------------------
 
 image: xobjs: font: fonts: cont: text: resource: page: catalog: xref: trailer: none
 
 if error? err: try [
-    image: make-pdf-obj pdf-lib/image-rgb-stream! [ logo.gif ]
-    xobjs: make-pdf-obj pdf-lib/XObjects-dict! [ logo.gif image ]
     
-    font: make-pdf-obj pdf-lib/font-dict!  [ Times-Roman ]
-    font2: make-pdf-obj pdf-lib/font-dict!  [ Helvetica ]
-    fonts: make-pdf-obj pdf-lib/fonts-dict! [ Times-Roman font H font2 ]
-    fonts: make-pdf-obj pdf-lib/fonts-dict! [ Times-Roman font H font2 H2 font ]
-    cont: make-pdf-obj pdf-lib/base-stream! [
-	q 4  w 0 1 0 RG 100 100 m 200 100 l 200 200 l 100 200 l s Q
-	q 100 0 0 24 150 150 cm /logo.gif Do Q ]
-    text: make-pdf-obj pdf-lib/base-stream! [
-	BT 0 0 0 rg /Times-Roman 18 Tf 100 100 Td "Hello" Tj ET
-	BT 0 0 1 rg /H 18 Tf 200 100 Td "Blue" Tj ET
-	BT 0 0 1 rg /H2 18 Tf 200 80 Td "Blueer" Tj ET
-    ]
-    resource: make-pdf-obj pdf-lib/resources-dict! [ fonts xobjs ]
-    page: make-pdf-obj pdf-lib/page-dict! [ cont resource text ]
-    page/set-mediaBox [ 0 0 300 300 ]
-    pages: make-pdf-obj pdf-lib/pages-dict! [ page ]
-    catalog: make-pdf-obj pdf-lib/catalog-dict! [ pages ]
-    xref: make-pdf-obj pdf-lib/xref-obj! pdf-lib/obj-list
-    trailer: make-pdf-obj pdf-lib/trailer-dict! [ xref catalog ]
+    doc: prepare-pdf/file-name %newer.pdf
 
-    pdf: pdf-lib/create-pdf pdf-lib/obj-list
-    write %new.pdf pdf
+    image: doc/make-obj pdf-lib/image-rgb-stream! [ logo.gif ]
+
+    im: make image! 2x2
+    poke im 0x0 ivory poke im 1x0 blue poke im 0x1 green poke im 1x1 magenta
+    image2: doc/make-obj pdf-lib/image-rgb-stream! [ im ]
+
+    xobjs: doc/make-obj pdf-lib/XObjects-dict! [ logo.gif image pix image2]
+    
+    font: doc/make-obj pdf-lib/font-dict!  [ Times-Roman ]
+    font2: doc/make-obj pdf-lib/font-dict!  [ Helvetica ]
+    fonts: doc/make-obj pdf-lib/fonts-dict! [ Times-Roman font H font2 ]
+    fonts: doc/make-obj pdf-lib/fonts-dict! [ Times-Roman font H font2 H2 font ]
+    cont: doc/make-obj pdf-lib/base-stream! [
+	q 4  w 0 1 0 RG 100 100 m 200 100 l 200 200 l 100 200 l s Q
+	q 100 0 0 24 150 150 cm /logo.gif Do Q
+	q 50 0 0 50 10x10 cm /pix Do Q
+]
+    text: doc/make-obj pdf-lib/base-stream! [
+	BT 0 0 0 rg /Times-Roman 18 Tf 100 100 Td "Hello" Tj ET
+	BT 0 0 1 rg /H 18 Tf 200 100 Td "Blue air" Tj ET
+	BT 0 0 1 rg /H2 9 Tf 200 80 Td "Finnair" Tj ET
+    ]
+    resource: doc/make-obj pdf-lib/resources-dict! [ fonts xobjs ]
+    page: doc/make-obj pdf-lib/page-dict! [ cont resource text ]
+    page/set-mediaBox [ 0 0 300 300 ]
+    pages: doc/make-obj pdf-lib/pages-dict! [ page ]
+    catalog: doc/make-obj/root pdf-lib/catalog-dict! [ pages ]
+
+    doc/write
     true
 ] [
     err: disarm err
