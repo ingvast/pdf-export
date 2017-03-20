@@ -405,7 +405,7 @@ pdf-lib: module [
 	dict: [ Size Root ID Info ]
 	set-root: func [ catalog ][
 	    unless catalog/Type = /Catalog [
-		make error! rejoin [ "Argument need to be a catalog. Is:" p ]
+		make error! rejoin [ "Argument need to be a catalog. Is:" catalog/Type ]
 	    ]
 	    Root: catalog
 	]
@@ -447,14 +447,14 @@ pdf-lib: module [
 		]
 	    ]
 
-	    obj-list: []
+	    obj-list: copy []
 	    
 	    add-obj: func [ obj ][
 		append obj-list obj
 	    ]
 
 	    check: does [
-		unless Catalog [ make error! {No catalog set} ]
+		unless Root [ make error! {No catalog set} ]
 		foreach o obj-list [ o/check ]
 		'OK
 	    ]
@@ -464,9 +464,21 @@ pdf-lib: module [
 	    ]
 	    Root: none	
 	    
-	    prepare: func [ /local xref trailer ] [
+	    prepare: func [
+		/keep {Keep oldest xrefs and trailers }
+		/local xref trailer
+	    ] [
+		unless keep [
+		    foreach o reverse obj-list [
+			if o/Type = /xref [ remove find obj-list o break ]
+		    ]
+		    foreach o reverse obj-list [
+			if o/Type = /trailer [ remove find obj-list o break ]
+		    ]
+		]
+			
 		xref: make-obj pdf-lib/xref-obj!  [ obj-list ]
-		trailer: make-obj pdf-lib/trailer-dict! [ xref Catalog ]
+		trailer: make-obj pdf-lib/trailer-dict! [ xref Root ]
 
 		trailer/Size: length? obj-list
 
@@ -504,48 +516,52 @@ pdf-lib: module [
 	    ]
 	]
     ]
-]
 
+    test: func [
+    ][
+	; --------------------------------------------------------------
 
-; --------------------------------------------------------------
+	image: xobjs: font: fonts: cont: text: resource: page: catalog: none
 
-image: xobjs: font: fonts: cont: text: resource: page: catalog: xref: trailer: none
+	if error? err: try [
+	    
+	    doc: prepare-pdf/file-name %newer.pdf
 
-if error? err: try [
-    
-    doc: prepare-pdf/file-name %newer.pdf
+	    image: doc/make-obj pdf-lib/image-rgb-stream! [ logo.gif ]
 
-    image: doc/make-obj pdf-lib/image-rgb-stream! [ logo.gif ]
+	    im: make image! 2x2
+	    poke im 0x0 ivory poke im 1x0 blue poke im 0x1 green poke im 1x1 magenta
+	    image2: doc/make-obj pdf-lib/image-rgb-stream! [ im ]
 
-    im: make image! 2x2
-    poke im 0x0 ivory poke im 1x0 blue poke im 0x1 green poke im 1x1 magenta
-    image2: doc/make-obj pdf-lib/image-rgb-stream! [ im ]
+	    xobjs: doc/make-obj pdf-lib/XObjects-dict! [ logo.gif image pix image2]
+	    
+	    font: doc/make-obj pdf-lib/font-dict!  [ Times-Roman ]
+	    font2: doc/make-obj pdf-lib/font-dict!  [ Helvetica ]
+	    fonts: doc/make-obj pdf-lib/fonts-dict! [ Times-Roman font H font2 H2 font ]
+	    cont: doc/make-obj pdf-lib/base-stream! [
+		q 4  w 0 1 0 RG 100 100 m 200 100 l 200 200 l 100 200 l s Q
+		q 100 0 0 24 150 150 cm /logo.gif Do Q
+		q 50 0 0 50 10x10 cm /pix Do Q
+	]
+	    text: doc/make-obj pdf-lib/base-stream! compose [
+		BT 0 0 0 rg /Times-Roman 18 Tf 100 100 Td "Hello" Tj ET
+		BT 0 0 1 rg /H 18 Tf 200 100 Td "Blue air" Tj ET
+		BT 0 0 1 rg /H2 9 Tf 200 80 Td "Finnair" Tj ET
+		BT (sky) rg /Times-Roman 10 Tf 150x15 Td (to-string now ) Tj ET
+	    ]
+	    resource: doc/make-obj pdf-lib/resources-dict! [ fonts xobjs ]
+	    page: doc/make-obj pdf-lib/page-dict! [ cont resource text ]
+	    page/set-mediaBox [ 0 0 300 300 ]
+	    pages: doc/make-obj pdf-lib/pages-dict! [ page ]
+	    catalog: doc/make-obj/root pdf-lib/catalog-dict! [ pages ]
 
-    xobjs: doc/make-obj pdf-lib/XObjects-dict! [ logo.gif image pix image2]
-    
-    font: doc/make-obj pdf-lib/font-dict!  [ Times-Roman ]
-    font2: doc/make-obj pdf-lib/font-dict!  [ Helvetica ]
-    fonts: doc/make-obj pdf-lib/fonts-dict! [ Times-Roman font H font2 ]
-    fonts: doc/make-obj pdf-lib/fonts-dict! [ Times-Roman font H font2 H2 font ]
-    cont: doc/make-obj pdf-lib/base-stream! [
-	q 4  w 0 1 0 RG 100 100 m 200 100 l 200 200 l 100 200 l s Q
-	q 100 0 0 24 150 150 cm /logo.gif Do Q
-	q 50 0 0 50 10x10 cm /pix Do Q
-]
-    text: doc/make-obj pdf-lib/base-stream! [
-	BT 0 0 0 rg /Times-Roman 18 Tf 100 100 Td "Hello" Tj ET
-	BT 0 0 1 rg /H 18 Tf 200 100 Td "Blue air" Tj ET
-	BT 0 0 1 rg /H2 9 Tf 200 80 Td "Finnair" Tj ET
+	    doc/write
+	    true
+	] [
+	    err: disarm err
+	    ? err
+	]
     ]
-    resource: doc/make-obj pdf-lib/resources-dict! [ fonts xobjs ]
-    page: doc/make-obj pdf-lib/page-dict! [ cont resource text ]
-    page/set-mediaBox [ 0 0 300 300 ]
-    pages: doc/make-obj pdf-lib/pages-dict! [ page ]
-    catalog: doc/make-obj/root pdf-lib/catalog-dict! [ pages ]
-
-    doc/write
-    true
-] [
-    err: disarm err
-    ? err
 ]
+
+
