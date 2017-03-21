@@ -267,10 +267,11 @@ register-font: func [ name ][
 register-image: func [ image [image!]
     /local name
 ] [
-    unless find image-list image [
-	name: create-unique-name image
+    name: create-unique-name image
+    unless find/skip next image-list image 2 [
 	repend  image-list [name image]
     ]
+    ?? name
 ]
 
 draw-to-stream: func [
@@ -510,7 +511,7 @@ parse-face: func [
 
     fy-py: func [ y ][ face/size/y - y ]
 
-    repend strea [ 0x0 face/size 're 'W ] ; Set clipping
+    repend strea [ 0x0 face/size 're 'W 'n ] ; Set clipping
     
     if face/color [ ; background
 	repend strea [
@@ -519,7 +520,13 @@ parse-face: func [
 	]
     ]
     if face/image [
-	reference: register-image face/image
+	reference: to-refinement register-image face/image
+	repend strea [
+	    ; Assume scale 'fit
+	    'q face/size/x 0 0 face/size/y 0 0 'cm 
+	    reference 'Do
+	    'Q
+	]
     ]
 
     if  block? p: face/effect [
