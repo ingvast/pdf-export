@@ -559,8 +559,9 @@ parse-face: func [
 		- line-info/offset/y
 		- face/font/size
 		- edge/y
+	    if face/font [ current-font: face/font ]
 	    append strea compose [
-		BT (register-font face/font/name) (face/font/size) Tf
+		BT (register-font current-font) (face/font/size) Tf
 		(face/font/color) rg 
 		( reduce [ x y ] )
 		Td
@@ -633,18 +634,17 @@ face-to-pdf: func [
     doc: prepare-pdf
     
     strea: parse-face face
+    graph: doc/make-obj pdf-lib/base-stream! strea
 
     fonts: doc/make-obj pdf-lib/fonts-dict! []
-
-    font-list: unique font-list
+    
+    font-list:  unique font-list
     font-replacement: copy []
-    foreach f font-list [
-	font-replace: translate-fontname f
-	unless find font-replacement font-replace [
-	    append font-replacement font-replace
-	    fnt: doc/make-obj pdf-lib/font-dict! reduce [ font-replace ]
-	]
-	fonts/add-obj  f fnt 
+    foreach f font-list [ append font-replacement translate-fontname f ]
+    f-l: copy []
+    foreach f unique font-replacement [ repend f-l [ f doc/make-obj pdf-lib/font-dict! reduce [ f ]] ]
+    loop  length? font-list [
+	fonts/add-obj  probe first+ font-list   select f-l probe first+ font-replacement
     ]
 
     ; Handle images
@@ -660,7 +660,6 @@ face-to-pdf: func [
     unless empty? fonts/value-list [ resource/Font: fonts ]
 	
 
-    graph: doc/make-obj pdf-lib/base-stream! strea
     page: doc/make-obj pdf-lib/page-dict! [ graph resource ]
     page/set-mediaBox reduce [ 0x0 face/size ]
     pages: doc/make-obj pdf-lib/pages-dict! [ page ]
