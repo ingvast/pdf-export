@@ -21,7 +21,6 @@ pdf-lib: module [
     ] [
 
 	str: copy ""
-	unless block? blk [ blk: reduce [ blk ] ]
 	forall blk [
 	    arg: first blk
 	    if new-line? blk [
@@ -61,8 +60,7 @@ pdf-lib: module [
 		]
 		tuple? arg [
 		    repeat i length? arg [
-			repend str form   ( pick arg i ) / 255
-			append str space
+			append str sprintf reduce [ "%f " ( pick arg i ) / 255.0 ]
 		    ]
 		]
 		logic? arg [
@@ -74,6 +72,9 @@ pdf-lib: module [
 			; Hence write out id 0 R
 			append str form get-obj-reference obj-list arg
 			append str space
+		]
+		decimal? arg [
+		    append str sprintf [ "%f " arg ]
 		]
 		true [
 		    append str mold arg
