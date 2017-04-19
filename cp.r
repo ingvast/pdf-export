@@ -3,10 +3,40 @@ REBOL [
     author: {Johan Ingvast}
 ]
 
-module: func [ block ][ context block ]
+module: :context
 
 pdf-lib: module [
     space: #" "
+
+    has-alpha: func [ im [image!] ][
+	find im/alpha charset [ #"^(1)" - #"^(255)" ]
+    ]
+
+    image-rgb!: make object! [
+	type: 'image-rgb!
+	image: none
+    ]
+
+    image-alpha!: make object! [
+	type: 'image-alpha!
+	image: none
+    ]
+
+    image-rgb?: func [ obj ][
+	all[
+	    object? obj
+	    get in obj 'type
+	    obj/type = 'image-rgb!
+	]
+    ]
+
+    image-alpha?: func [ obj ][
+	all[
+	    object? obj
+	    get in obj 'type
+	    obj/type = 'image-alpha!
+	]
+    ]
 
     to-pdf-string: func [
 	{Takes a block of pdf graphics commands (encoded as rebol) and
@@ -53,6 +83,12 @@ pdf-lib: module [
 		]
 		image? arg [
 		    append str copy/part skip p: mold to-binary arg/rgb 2 back tail p
+		]
+		image-rgb? arg [
+		    append str copy/part skip p: mold to-binary arg/image/rgb 2 back tail p
+		]
+		image-alpha? arg [
+		    append str copy/part skip p: mold to-binary arg/image/alpha 2 back tail p
 		]
 		pair? arg [
 		    repend str reform [ arg/x arg/y ]
@@ -247,6 +283,31 @@ pdf-lib: module [
 
     image-rgb-stream!: make base-stream! [
 	append dict [ Type Subtype Width Height ColorSpace
+			BitsPerComponent Filter Mask
+	]
+	Type: /XObject
+	Subtype: /Image
+	Interpolate: False
+	Width: Height: 'required
+	ColorSpace: /DeviceRGB
+	BitsPerComponent: 'required
+	Filter: /ASCIIHexDecode
+	Mask: none ; Set to appropriate XObject when the the image has an alpha channel
+	init: func [ spec /local im ][
+	    spec: reduce spec
+	    im: first spec
+	    stream: make image-rgb! [ image: spec ]
+	    Width: im/size/x
+	    Height: im/size/y
+	    BitsPerComponent: 8
+	    if spec/2 [
+		Mask: to-refinement spec/2
+	    ]
+	]
+    ]
+
+    image-alpha-stream!: make base-stream! [
+	append dict [   Type Subtype Width Height ColorSpace
 			BitsPerComponent Filter 
 	]
 	Type: /XObject
@@ -259,7 +320,7 @@ pdf-lib: module [
 	init: func [ spec /local im ][
 	    spec: reduce spec
 	    im: first spec
-	    stream: spec
+	    stream: make image-alpha! [ image: spec ]
 	    Width: im/size/x
 	    Height: im/size/y
 	    BitsPerComponent: 8

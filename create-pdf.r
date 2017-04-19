@@ -30,6 +30,8 @@ REBOL [
 
 do %cp.r
 
+do join to-rebol-file get-env "BIOSERVO" %/Tools/rebol/libs/printf.r
+
 pdf-stream-syntax: {
 taken from http://www.mactech.com/articles/mactech/Vol.15/15.09/PDFIntro/index.html
 b 	closepath, fill,and stroke path.
@@ -649,10 +651,20 @@ face-to-pdf: func [
 
     ; Handle images
     images: doc/make-obj pdf-lib/XObjects-dict! [ ]
-    image-list: unique image-list
+    image-list: unique/skip  image-list 2
     foreach [image-name image-obj ]  image-list [
-	image: doc/make-obj pdf-lib/image-rgb-stream! [ image-obj ]
+
+	either pdf-lib/has-alpha image-obj [
+	    alpha: doc/make-obj pdf-lib/image-alpha-stream! [ image-obj ]
+	    alpha-name: to-word join "A" image-name
+	    images/add-obj alpha-name alpha
+	][
+	    alpha-name: none
+	]
+
+	image: doc/make-obj pdf-lib/image-rgb-stream! [ image-obj alpha-name ]
 	images/add-obj image-name image
+
     ]
 
     resource: doc/make-obj pdf-lib/resources-dict! [  ]
@@ -665,8 +677,6 @@ face-to-pdf: func [
     pages: doc/make-obj pdf-lib/pages-dict! [ page ]
     cat: doc/make-obj/root pdf-lib/catalog-dict! [ pages ]
     
-    ;reduce-fonts
-    ;create-fonts-resource
     doc/to-string
 ]
 
