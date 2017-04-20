@@ -8,7 +8,10 @@ module: :context
 pdf-lib: module [
     space: #" "
 
-    has-alpha: func [ im [image!] ][
+    has-alpha: func [ im [
+	{Returns none if there is a alpha value not zero}
+	image!
+    ] ][
 	find im/alpha charset [ #"^(1)" - #"^(255)" ]
     ]
 
@@ -196,6 +199,7 @@ pdf-lib: module [
 	Length: does [ length? stream-string ]
 	stream-string: ""
 	to-string: func [ obj-list ] [
+	    unless block? stream [ stream: reduce [ stream ] ]
 	    stream-string: to-pdf-string obj-list stream
 	    to-string*/is-stream obj-list
 	    append string stream-start
@@ -296,7 +300,7 @@ pdf-lib: module [
 	init: func [ spec /local im ][
 	    spec: reduce spec
 	    im: first spec
-	    stream: make image-rgb! [ image: spec ]
+	    stream: make image-rgb! [ image: spec/1 ]
 	    Width: im/size/x
 	    Height: im/size/y
 	    BitsPerComponent: 8
@@ -308,19 +312,20 @@ pdf-lib: module [
 
     image-alpha-stream!: make base-stream! [
 	append dict [   Type Subtype Width Height ColorSpace
-			BitsPerComponent Filter 
+			BitsPerComponent Filter Decode
 	]
 	Type: /XObject
 	Subtype: /Image
 	Interpolate: False
 	Width: Height: 'required
-	ColorSpace: /DeviceRGB
+	ColorSpace: /DeviceGray
 	BitsPerComponent: 'required
 	Filter: /ASCIIHexDecode
+	Decode: [ 0 1 ]
 	init: func [ spec /local im ][
 	    spec: reduce spec
 	    im: first spec
-	    stream: make image-alpha! [ image: spec ]
+	    stream: make image-alpha! [ image: spec/1 ]
 	    Width: im/size/x
 	    Height: im/size/y
 	    BitsPerComponent: 8

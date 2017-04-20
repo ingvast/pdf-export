@@ -33,13 +33,22 @@ view/new  f: layout [
 	field "Dull alksjflasj l loapoppp o hej. piipiip"
 	btn: btn "OK" #"^w" [univew]
 	image logo.gif
+	image 100 %/c/users/jin/Documents/Bioservo/Admin/logo/090615-krumelur.png
+;/C:\Users\jin\Documents\BioServo\admin\Logo
 ]
 
 ;f/pane/1/text: system/license
 show f
 
-write/binary %test.pdf face-to-pdf f
+;write/binary %test.pdf face-to-pdf f
 
 ; layout [ f2: box 200x200 effect [ draw [ line 100x100 200x100 200x200 c ] ] ]
 ; write/binary %test.pdf face-to-pdf f
+
+view/new g: layout [
+    image 100 %/c/users/jin/Documents/Bioservo/Admin/logo/090615-krumelur.png
+]
+write/binary %krumelur.pdf face-to-pdf g
+
+unview/all
 
