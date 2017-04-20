@@ -3,6 +3,8 @@ REBOL [
 
 do %create-pdf.r
 
+krumelur: load join to-rebol-file get-env "BIOSERVO" %/admin/Logo/090615-krumelur.png
+
 big-font: make current-font [
     name: "/usr/share/fonts/gnu-free/FreeSans.ttf"
     size: 100
@@ -33,7 +35,7 @@ view/new  f: layout [
 	field "Dull alksjflasj l loapoppp o hej. piipiip"
 	btn: btn "OK" #"^w" [univew]
 	image logo.gif
-	image 100 %/c/users/jin/Documents/Bioservo/Admin/logo/090615-krumelur.png
+	image 100 krumelur
 ;/C:\Users\jin\Documents\BioServo\admin\Logo
 ]
 
@@ -46,7 +48,7 @@ show f
 ; write/binary %test.pdf face-to-pdf f
 
 view/new g: layout [
-    image 100 %/c/users/jin/Documents/Bioservo/Admin/logo/090615-krumelur.png
+    image 100 krumelur
 ]
 write/binary %krumelur.pdf face-to-pdf g
 

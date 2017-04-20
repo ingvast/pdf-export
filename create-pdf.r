@@ -659,10 +659,10 @@ face-to-pdf: func [
 	    alpha-name: to-word join "A" image-name
 	    images/add-obj alpha-name alpha
 	][
-	    alpha-name: none
+	    alpha: none
 	]
 
-	image: doc/make-obj pdf-lib/image-rgb-stream! [ image-obj alpha-name ]
+	image: doc/make-obj pdf-lib/image-rgb-stream! [ image-obj alpha ]
 	images/add-obj image-name image
 
     ]

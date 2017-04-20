@@ -305,7 +305,7 @@ pdf-lib: module [
 	    Height: im/size/y
 	    BitsPerComponent: 8
 	    if spec/2 [
-		Mask: to-refinement spec/2
+		Mask: spec/2
 	    ]
 	]
     ]
