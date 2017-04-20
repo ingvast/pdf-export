@@ -286,9 +286,7 @@ pdf-lib: module [
     ]
 
     image-rgb-stream!: make base-stream! [
-	append dict [ Type Subtype Width Height ColorSpace
-			BitsPerComponent Filter Mask
-	]
+	append dict [ Type Subtype Width Height ColorSpace BitsPerComponent Filter SMask ]
 	Type: /XObject
 	Subtype: /Image
 	Interpolate: False
@@ -296,7 +294,7 @@ pdf-lib: module [
 	ColorSpace: /DeviceRGB
 	BitsPerComponent: 'required
 	Filter: /ASCIIHexDecode
-	Mask: none ; Set to appropriate XObject when the the image has an alpha channel
+	SMask: none ; Set to appropriate XObject when the the image has an alpha channel
 	init: func [ spec /local im ][
 	    spec: reduce spec
 	    im: first spec
@@ -305,23 +303,21 @@ pdf-lib: module [
 	    Height: im/size/y
 	    BitsPerComponent: 8
 	    if spec/2 [
-		Mask: spec/2
+		SMask: spec/2
 	    ]
 	]
     ]
 
     image-alpha-stream!: make base-stream! [
-	append dict [   Type Subtype Width Height ColorSpace
-			BitsPerComponent Filter Decode
-	]
+	append dict [ Type Subtype Width Height ColorSpace BitsPerComponent Filter Decode Interpolate ]
 	Type: /XObject
 	Subtype: /Image
-	Interpolate: False
+	Interpolate: True
 	Width: Height: 'required
 	ColorSpace: /DeviceGray
 	BitsPerComponent: 'required
 	Filter: /ASCIIHexDecode
-	Decode: [ 0 1 ]
+	Decode: [ 1 0 ]
 	init: func [ spec /local im ][
 	    spec: reduce spec
 	    im: first spec
