@@ -12,7 +12,7 @@ pdf-lib: module [
 	{Returns none if there is a alpha value not zero}
 	image!
     ] ][
-	find im/alpha charset [ #"^(1)" - #"^(255)" ]
+	find im/alpha charset [ #"^(01)" - #"^(ff)" ]
     ]
 
     image-rgb!: make object! [
