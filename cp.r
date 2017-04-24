@@ -1,19 +1,24 @@
 REBOL [
-    title: {PDF creation functions. Basics for building a pdf document}
+    title: {PDF creation functions. Basics for building a pdf document used primarily by face-to-pdf}
     author: {Johan Ingvast}
 ]
 
-module: :context
 
-pdf-lib: module [
-    space: #" "
+pdf-lib: context [
 
-    has-alpha: func [ im [
-	{Returns none if there is a alpha value not zero}
-	image!
-    ] ][
-	find im/alpha charset [ #"^(01)" - #"^(ff)" ]
+    export: func [
+	{Exports any variable you give as argumment from this lib to your context}
+	adds [word! block! unset!]
+    ] [
+	unless  value? 'adds [ adds: [] ]
+	unless block? adds [ adds: reduce [ adds ] ]
+	foreach var  adds [
+	    set bind var var get bind var self
+	]
     ]
+    
+
+    space: #" "
 
     image-rgb!: make object! [
 	type: 'image-rgb!
@@ -626,5 +631,4 @@ pdf-lib: module [
 	]
     ]
 ]
-
 

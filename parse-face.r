@@ -5,6 +5,7 @@ do %create-pdf.r
 
 krumelur: load join to-rebol-file get-env "BIOSERVO" %/admin/Logo/090615-krumelur.png
 
+current-font: face-to-pdf-lib/current-font
 big-font: make current-font [
     name: "/usr/share/fonts/gnu-free/FreeSans.ttf"
     size: 100
@@ -45,12 +46,12 @@ show f
 ;write/binary %test.pdf face-to-pdf f
 
 ; layout [ f2: box 200x200 effect [ draw [ line 100x100 200x100 200x200 c ] ] ]
-write/binary %test.pdf face-to-pdf f
+write/binary %test.pdf face-to-pdf-lib/face-to-pdf f
 
 view/new g: layout [
     image 100 krumelur
 ]
-write/binary %krumelur.pdf face-to-pdf g
+write/binary %krumelur.pdf face-to-pdf-lib/face-to-pdf g
 
 unview/all
 
