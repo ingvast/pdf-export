@@ -5,7 +5,7 @@ REBOL [
     requires: [ printf ]
 ]
 
-pdf-lib: context [
+context [
 
     context [
 	; just some documentation
@@ -571,7 +571,7 @@ pdf-lib: context [
 	]
     ]
     
-    set 'prepare-pdf func [
+    prepare-pdf: func [
 	{Returns an object that can be modified to contain a pdf document.
 	 Finalize by calling the method toString which will output a string that can be written to 
 	 a file and saved as pdf.

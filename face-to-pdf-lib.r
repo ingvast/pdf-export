@@ -1,13 +1,13 @@
 REBOL [
-    title: {create-pdf out of view objects}
+    title: {Make pdfs out of view objects}
     authour: {Johan Ingvast}
     help: {
 	Call with one argument being a face object
 	>> face-to-pdf/face-to-pdf face
 	or 
-	>> create-pdf layout [ field "We are the champions" ]
+	>> face-to-pdf-lib/face-to-pdf layout [ field "We are the champions" ]
 	In return you get a text stream. Save it to whatever file you want
-	>> write/binary %my.pdf create-pdf layout [ text "This is file my.pdf" ]
+	>> write/binary %my.pdf face-to-pdf-lib/face-to-pdf layout [ text "This is file my.pdf" ]
 	
 	One pixel in the face will be one point in the pdf document.
 
@@ -29,11 +29,12 @@ REBOL [
 	* Improve the printing of strings to do proper escapes
     }
 
+    Requires: [ pdf-lib ]
+
 ]
 
-do %cp.r
 
-face-to-pdf-lib: context [
+context [
 
     do join to-rebol-file get-env "BIOSERVO" %/Tools/rebol/libs/printf.r
 
@@ -49,7 +50,7 @@ face-to-pdf-lib: context [
     ]
     
 
-    do %cp.r ; Load  the pdf-module
+    pdf-lib: do %pdf-lib.r ; Load  the pdf-module
 
 
     ; Utility functions
@@ -600,7 +601,7 @@ face-to-pdf-lib: context [
 	    doc
     ][
 	; Initialize
-	doc: prepare-pdf
+	doc: pdf-lib/prepare-pdf
 	
 	font-list: copy []
 	image-list: copy []
