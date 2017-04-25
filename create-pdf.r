@@ -49,75 +49,6 @@ face-to-pdf-lib: context [
     ]
     
 
-    context [
-	; just some documentation
-	pdf-stream-syntax: {
-	    taken from http://www.mactech.com/articles/mactech/Vol.15/15.09/PDFIntro/index.html
-	    b 	closepath, fill,and stroke path.
-	    B 	fill and stroke path.
-	    b* 	closepath, eofill,and stroke path.
-	    B* 	eofill and stroke path.
-	    BI 	begin image.
-	    BMC 	begin marked content.
-	    BT 	begin text object.
-	    BX 	begin section allowing undefined operators.
-	    c 	curveto.
-	    cm 	concat. Concatenates the matrix to the current transform.
-	    cs 	setcolorspace for fill.
-	    CS 	setcolorspace for stroke.
-	    d 	setdash.
-	    Do 	execute the named XObject.
-	    DP 	mark a place in the content stream, with a dictionary.
-	    EI 	end image.
-	    EMC 	end marked content.
-	    ET 	end text object.
-	    EX 	end section that allows undefined operators.
-	    f 	fill path.
-	    f* 	eofill Even/odd fill path.
-	    g 	setgray (fill).
-	    G 	setgray (stroke).
-	    gs 	set parameters in the extended graphics state.
-	    h 	closepath.
-	    i	setflat.
-	    ID 	begin image data.
-	    j 	setlinejoin.
-	    J 	setlinecap.
-	    k 	setcmykcolor (fill).
-	    K 	setcmykcolor (stroke).
-	    l 	lineto.
-	    m 	moveto.
-	    M 	setmiterlimit.
-	    n 	end path without fill or stroke.
-	    q 	save graphics state.
-	    Q 	restore graphics state.
-	    re 	rectangle.
-	    rg 	setrgbcolor (fill).
-	    RG 	setrgbcolor (stroke).
-	    s 	closepath and stroke path.
-	    S 	stroke path.
-	    sc 	setcolor (fill).
-	    SC 	setcolor (stroke).
-	    sh 	shfill (shaded fill).
-	    Tc 	set character spacing.
-	    Td 	move text current point.
-	    TD 	move text current point and set leading.
-	    Tf 	set font name and size.
-	    Tj 	show text.
-	    TJ 	show text, allowing individual character positioning.
-	    TL 	set leading.
-	    Tm 	set text matrix.
-	    Tr 	set text rendering mode.
-	    Ts 	set super/subscripting text rise.
-	    Tw	set word spacing.
-	    Tz 	set horizontal scaling.
-	    T* 	move to start of next line.
-	    v 	curveto.
-	    w 	'setlinewidth.
-	    W 	clip.
-	    y 	curveto.
-	}
-    ]
-
     do %cp.r ; Load  the pdf-module
 
 
@@ -660,12 +591,25 @@ face-to-pdf-lib: context [
 	face
 	/local
 	    f-l
+	    fonts
+	    font-replacement
+	    images
+	    image
+	    page
+	    pages
+	    doc
     ][
+	; Initialize
 	doc: prepare-pdf
 	
+	font-list: copy []
+	image-list: copy []
+	
+	; Make content
 	strea: parse-face face
 	graph: doc/make-obj pdf-lib/base-stream! strea
 
+	; Fonts
 	fonts: doc/make-obj pdf-lib/fonts-dict! []
 	
 	font-list:  unique font-list
@@ -695,17 +639,22 @@ face-to-pdf-lib: context [
 
 	]
 
+	; Register resources
 	resource: doc/make-obj pdf-lib/resources-dict! [  ]
 	unless empty? images/value-list [ resource/XObject: images ]
 	unless empty? fonts/value-list [ resource/Font: fonts ]
 	    
 
+	; Create page
 	page: doc/make-obj pdf-lib/page-dict! [ graph resource ]
 	page/set-mediaBox reduce [ 0x0 face/size ]
+
+	; Create the page
 	pages: doc/make-obj pdf-lib/pages-dict! [ page ]
-	cat: doc/make-obj/root pdf-lib/catalog-dict! [ pages ]
+
+	; Creeate the object holding pages together
+	doc/make-obj/root pdf-lib/catalog-dict! [ pages ]
 	
 	doc/to-string
     ]
-]
-
+] 

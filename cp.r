@@ -3,8 +3,77 @@ REBOL [
     author: {Johan Ingvast}
 ]
 
-
 pdf-lib: context [
+
+    context [
+	; just some documentation
+	pdf-stream-syntax: {
+	    taken from http://www.mactech.com/articles/mactech/Vol.15/15.09/PDFIntro/index.html
+	    b 	closepath, fill,and stroke path.
+	    B 	fill and stroke path.
+	    b* 	closepath, eofill,and stroke path.
+	    B* 	eofill and stroke path.
+	    BI 	begin image.
+	    BMC 	begin marked content.
+	    BT 	begin text object.
+	    BX 	begin section allowing undefined operators.
+	    c 	curveto.
+	    cm 	concat. Concatenates the matrix to the current transform.
+	    cs 	setcolorspace for fill.
+	    CS 	setcolorspace for stroke.
+	    d 	setdash.
+	    Do 	execute the named XObject.
+	    DP 	mark a place in the content stream, with a dictionary.
+	    EI 	end image.
+	    EMC 	end marked content.
+	    ET 	end text object.
+	    EX 	end section that allows undefined operators.
+	    f 	fill path.
+	    f* 	eofill Even/odd fill path.
+	    g 	setgray (fill).
+	    G 	setgray (stroke).
+	    gs 	set parameters in the extended graphics state.
+	    h 	closepath.
+	    i	setflat.
+	    ID 	begin image data.
+	    j 	setlinejoin.
+	    J 	setlinecap.
+	    k 	setcmykcolor (fill).
+	    K 	setcmykcolor (stroke).
+	    l 	lineto.
+	    m 	moveto.
+	    M 	setmiterlimit.
+	    n 	end path without fill or stroke.
+	    q 	save graphics state.
+	    Q 	restore graphics state.
+	    re 	rectangle.
+	    rg 	setrgbcolor (fill).
+	    RG 	setrgbcolor (stroke).
+	    s 	closepath and stroke path.
+	    S 	stroke path.
+	    sc 	setcolor (fill).
+	    SC 	setcolor (stroke).
+	    sh 	shfill (shaded fill).
+	    Tc 	set character spacing.
+	    Td 	move text current point.
+	    TD 	move text current point and set leading.
+	    Tf 	set font name and size.
+	    Tj 	show text.
+	    TJ 	show text, allowing individual character positioning.
+	    TL 	set leading.
+	    Tm 	set text matrix.
+	    Tr 	set text rendering mode.
+	    Ts 	set super/subscripting text rise.
+	    Tw	set word spacing.
+	    Tz 	set horizontal scaling.
+	    T* 	move to start of next line.
+	    v 	curveto.
+	    w 	'setlinewidth.
+	    W 	clip.
+	    y 	curveto.
+	}
+    ]
+
 
     export: func [
 	{Exports any variable you give as argumment from this lib to your context}
@@ -501,19 +570,12 @@ pdf-lib: context [
     ]
     
     set 'prepare-pdf func [
-	/file-name file
+	{Returns an object that can be modified to contain a pdf document.
+	 Finalize by calling the method toString which will output a string that can be written to 
+	 a file and saved as pdf.
+	 To see an example of how to use the object, see create-pdf-lib/test as an example}
     ][
 	context [
-
-	    file-name: file
-
-	    write: does [
-		either file-name [
-		    system/words/write file-name to-string 
-		][
-		    make error! "No filename given"
-		]
-	    ]
 
 	    obj-list: copy []
 	    
@@ -593,7 +655,7 @@ pdf-lib: context [
 
 	if error? err: try [
 	    
-	    doc: prepare-pdf/file-name %newer.pdf
+	    doc: prepare-pdf
 
 	    image: doc/make-obj pdf-lib/image-rgb-stream! [ logo.gif ]
 
@@ -623,7 +685,7 @@ pdf-lib: context [
 	    pages: doc/make-obj pdf-lib/pages-dict! [ page ]
 	    catalog: doc/make-obj/root pdf-lib/catalog-dict! [ pages ]
 
-	    doc/write
+	    write %newer.pdf doc/to-string
 	    true
 	] [
 	    err: disarm err
