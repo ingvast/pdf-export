@@ -1,6 +1,8 @@
 REBOL [
     title: {PDF creation functions. Basics for building a pdf document used primarily by face-to-pdf}
     author: {Johan Ingvast}
+
+    requires: [ printf ]
 ]
 
 pdf-lib: context [

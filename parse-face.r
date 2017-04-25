@@ -1,7 +1,7 @@
 REBOL [
 ]
 
-do %create-pdf.r
+do %pdf-lib.r
 
 krumelur: load join to-rebol-file get-env "BIOSERVO" %/admin/Logo/090615-krumelur.png
 
