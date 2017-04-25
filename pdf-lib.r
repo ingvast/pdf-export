@@ -6,6 +6,8 @@ REBOL [
 ]
 
 context [
+    
+    do join to-rebol-file get-env "BIOSERVO" %/Tools/rebol/libs/printf.r
 
     context [
 	; just some documentation
@@ -125,8 +127,9 @@ context [
 	}
 	obj-list [block!] {A list of objects for the document}
 	blk  [block!] {The content to make string of, objects are converted to references}
-	/local str p 
+	/local str p  arg
 	    string from to
+	    string-replacements
     ] [
 
 	str: copy ""
@@ -512,7 +515,7 @@ context [
 	footer: none
 	;objs: 'reqired
 	string: ""
-	to-string:  func [ obj-list ][
+	to-string:  func [ obj-list /local counts ][
 	    string: copy ""
 	    counts:  index? find obj-list self
 	    append string rejoin [
@@ -575,7 +578,7 @@ context [
 	{Returns an object that can be modified to contain a pdf document.
 	 Finalize by calling the method toString which will output a string that can be written to 
 	 a file and saved as pdf.
-	 To see an example of how to use the object, see create-pdf-lib/test as an example}
+	 To see an example of how to use the object, see pdf-lib/test as an example}
     ][
 	context [
 
@@ -609,8 +612,8 @@ context [
 		    ]
 		]
 			
-		xref: make-obj pdf-lib/xref-obj!  [ obj-list ]
-		trailer: make-obj pdf-lib/trailer-dict! [ xref Root ]
+		xref: make-obj xref-obj!  [ obj-list ]
+		trailer: make-obj trailer-dict! [ xref Root ]
 
 		trailer/Size: length? obj-list
 
@@ -650,6 +653,9 @@ context [
     ]
 
     test: func [
+	/local
+	image xobjs font fonts cont text resource page catalog
+	err doc im image2 font2 pages 
     ][
 	; --------------------------------------------------------------
 
@@ -659,33 +665,33 @@ context [
 	    
 	    doc: prepare-pdf
 
-	    image: doc/make-obj pdf-lib/image-rgb-stream! [ logo.gif ]
+	    image: doc/make-obj image-rgb-stream! [ logo.gif ]
 
 	    im: make image! 2x2
 	    poke im 0x0 ivory poke im 1x0 blue poke im 0x1 green poke im 1x1 magenta
-	    image2: doc/make-obj pdf-lib/image-rgb-stream! [ im ]
+	    image2: doc/make-obj image-rgb-stream! [ im ]
 
-	    xobjs: doc/make-obj pdf-lib/XObjects-dict! [ logo.gif image pix image2]
+	    xobjs: doc/make-obj XObjects-dict! [ logo.gif image pix image2]
 	    
-	    font: doc/make-obj pdf-lib/font-dict!  [ Times-Roman ]
-	    font2: doc/make-obj pdf-lib/font-dict!  [ Helvetica ]
-	    fonts: doc/make-obj pdf-lib/fonts-dict! [ Times-Roman font H font2 H2 font ]
-	    cont: doc/make-obj pdf-lib/base-stream! [
+	    font: doc/make-obj font-dict!  [ Times-Roman ]
+	    font2: doc/make-obj font-dict!  [ Helvetica ]
+	    fonts: doc/make-obj fonts-dict! [ Times-Roman font H font2 H2 font ]
+	    cont: doc/make-obj base-stream! [
 		q 4  w 0 1 0 RG 100 100 m 200 100 l 200 200 l 100 200 l s Q
 		q 100 0 0 24 150 150 cm /logo.gif Do Q
 		q 50 0 0 50 10x10 cm /pix Do Q
 	]
-	    text: doc/make-obj pdf-lib/base-stream! compose [
+	    text: doc/make-obj base-stream! compose [
 		BT 0 0 0 rg /Times-Roman 18 Tf 100 100 Td "Hello" Tj ET
 		BT 0 0 1 rg /H 18 Tf 200 100 Td "Blue air" Tj ET
 		BT 0 0 1 rg /H2 9 Tf 200 80 Td "Finnair" Tj ET
 		BT (sky) rg /Times-Roman 10 Tf 150x15 Td (to-string now ) Tj ET
 	    ]
-	    resource: doc/make-obj pdf-lib/resources-dict! [ fonts xobjs ]
-	    page: doc/make-obj pdf-lib/page-dict! [ cont resource text ]
+	    resource: doc/make-obj resources-dict! [ fonts xobjs ]
+	    page: doc/make-obj page-dict! [ cont resource text ]
 	    page/set-mediaBox [ 0 0 300 300 ]
-	    pages: doc/make-obj pdf-lib/pages-dict! [ page ]
-	    catalog: doc/make-obj/root pdf-lib/catalog-dict! [ pages ]
+	    pages: doc/make-obj pages-dict! [ page ]
+	    catalog: doc/make-obj/root catalog-dict! [ pages ]
 
 	    write %newer.pdf doc/to-string
 	    true

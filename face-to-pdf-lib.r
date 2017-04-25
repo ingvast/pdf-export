@@ -36,8 +36,6 @@ REBOL [
 
 context [
 
-    do join to-rebol-file get-env "BIOSERVO" %/Tools/rebol/libs/printf.r
-
     export: func [
 	{Exports any variable you give as argumment from this lib to your context}
 	adds [word! block! unset!]
@@ -206,7 +204,7 @@ context [
     font-list: copy []
     image-list: copy []
 
-    register-font: func [ name ][
+    register-font: func [ name /local tmp ][
 	if object? name [
 	    either all [ string? name/name find name/name "/" ][
 		name: copy/part tmp: next find/last name/name "/" any [ find/last tmp "." tail tmp ]
@@ -241,7 +239,8 @@ context [
 	f  [object!]  {The face from what to calculate original colours, and size}
 	/noregister {Set this to only return a stream, do not register with name}
 	/size sz
-	/local
+	/local p s color strea patterns fy-py 
+	    render-mode  fnt 
     ][
 
 	fy-py: func [ y ][ ( any [ all [  sz sz/y ] f/size/y ])  - y ]
@@ -336,7 +335,7 @@ context [
 			|
 			set s string! (string: s )
 			|
-			set word [ 'anti-aliased | 'vectorial ( render-mode: 'vectorial )| 'aliased ]
+			[ 'anti-aliased | 'vectorial ( render-mode: 'vectorial )| 'aliased ]
 		]
 		(
 		    if render-mode = 'vectorial [
@@ -382,11 +381,11 @@ context [
 		repend strea [ current-line-width 'w ]
 	    ]
 
-	    eval-patterns: func [ pattern ][
+	    eval-patterns: func [ pattern /local here ][
 		
 		set-current-env
 
-		unless parse dbg: eval-draw pattern [
+		unless parse eval-draw pattern [
 		    any [ here:
 			  line 
 			| polygon
@@ -466,7 +465,8 @@ context [
 
     parse-face: func [
 	face [object!]
-	/local strea
+	/local strea offset n  x y pos edge pane line-info
+	    reference fy-py p
     ][
 	strea: copy []
 
@@ -597,8 +597,10 @@ context [
 	    images
 	    image
 	    page
-	    pages
+	    pages resource
 	    doc
+	    alpha
+	    graph   alpha-name strea
     ][
 	; Initialize
 	doc: pdf-lib/prepare-pdf
