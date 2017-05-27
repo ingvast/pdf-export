@@ -265,6 +265,12 @@ context [
 		      any [ set p pair! ( repend strea [ p/x fy-py p/y 'l ] )]
 		(append strea 'S) 
 	    ]
+	    box: [
+		'box set p1 pair! set p2 pair!
+		    opt [ set p number! ( print "Warning! Box corner radius is ignored" )]
+		    ( repend strea [ p1 p2 're stroke-aor-fill ] )
+	    ]
+	    
 	    polygon: [
 		'polygon opt [ set p pair! ( repend strea [ p/x fy-py p/y 'm ] ) ]
 			 any [ set p pair! ( repend strea [ p/x fy-py p/y 'l ] )]
@@ -272,6 +278,10 @@ context [
 	    ]
 	    line-width: [
 		'line-width set p number! ( current-line-width: p repend strea [ p 'w ] )
+	    ]
+	    line-pattern: [ 
+		'line-pattern (print "line-pattern" ) copy l-p [ none! | any number! ]
+		( current-line-pattern: l-p )
 	    ]
 	    fill-pen:  [
 		'fill-pen [
@@ -389,7 +399,9 @@ context [
 		    any [ here:
 			  line 
 			| polygon
+			| box
 			| line-width
+			| line-pattern
 			| fill-pen
 			| pen
 			| circle
@@ -398,7 +410,8 @@ context [
 			| rotate
 			| push
 			| text
-			| font here: (print mold here)
+			| font
+			| here: (print mold here) skip
 		    ]
 		] [
 		    make error! remold [ "Did not find end of pattern" here  newline "-----------------"]
@@ -500,10 +513,14 @@ context [
 		    q
 		    ( draw-commands/translate offset/x offset/y )
 		    (
-			draw-to-stream/noregister/size
-			    'anything p/2
-			    face
-			    face/size - ( 2x2 * offset )
+			use [ draw-cmds ] [
+			    draw-cmds: p/2
+			    if word? draw-cmds [ draw-cmds: get draw-cmds ]
+			    draw-to-stream/noregister/size
+				'anything draw-cmds
+				face
+				face/size - ( 2x2 * offset )
+			]
 		    )
 		    Q    
 		]
