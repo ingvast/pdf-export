@@ -527,9 +527,10 @@ context [
 		p: skip p  2
 	    ]
 	]
-	if all [ face/text not find system/view/screen-face/pane face ] [
+	if all [ face/text face/font face/font/color not find system/view/screen-face/pane face ] [
 	    line-info: make system/view/line-info []
 	    n: 0
+	    current-font: face/font 
 	    while [  textinfo face line-info n ][
 		edge: either all [ face/edge face/edge/size ][ face/edge/size ] [ 0x0 ]
 		x: line-info/offset/x + edge/x
@@ -537,7 +538,6 @@ context [
 		    - line-info/offset/y
 		    - face/font/size
 		    - edge/y
-		if face/font [ current-font: face/font ]
 		append strea compose [
 		    BT (register-font current-font) (face/font/size) Tf
 		    (face/font/color) rg 
@@ -675,6 +675,7 @@ context [
 	; Creeate the object holding pages together
 	doc/make-obj/root pdf-lib/catalog-dict! [ pages ]
 	
+dbg: doc
 	doc/to-string
     ]
 ] 
