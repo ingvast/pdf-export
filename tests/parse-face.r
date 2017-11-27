@@ -4,7 +4,7 @@ REBOL [
 context [
     face-to-pdf: do %face-to-pdf-lib.r
 
-    krumelur: load join to-rebol-file get-env "BIOSERVO" %/admin/Logo/090615-krumelur.png
+    krumelur: load join dirize to-rebol-file get-env "BIOSERVO" %admin/Logo/090615-krumelur.png
 
     current-font: face-to-pdf/current-font
     big-font: make current-font [

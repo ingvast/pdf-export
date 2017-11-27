@@ -7,7 +7,7 @@ REBOL [
 
 context [
     
-    do join to-rebol-file get-env "BIOSERVO" %/Tools/rebol/libs/printf.r
+    do join dirize to-rebol-file get-env "BIOSERVO" %Tools/rebol/libs/printf.r
 
     context [
 	; just some documentation
