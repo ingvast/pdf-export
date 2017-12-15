@@ -33,8 +33,7 @@ REBOL [
 
 ]
 
-
-context [
+face-to-pdf: context [
 
     export: func [
 	{Exports any variable you give as argumment from this lib to your context}
@@ -479,7 +478,7 @@ context [
     parse-face: func [
 	face [object!]
 	/local strea offset n  x y pos edge pane line-info
-	    reference fy-py p
+	    reference fy-py p save-current-font
     ][
 	strea: copy []
 
@@ -594,7 +593,9 @@ context [
 			probe pos: as-pair p/offset/x face/size/y - ( p/offset/y + p/size/y)
 			append strea 'q
 			append strea draw-commands/translate pos/x pos/y
-			append strea probe parse-face p
+			save-current-font: current-font
+			append strea parse-face p
+			current-font: save-current-font
 			append strea 'Q
 		    ]
 		    function? :p [ print "Transformation of functional panes not implemented" ]

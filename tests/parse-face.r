@@ -2,7 +2,7 @@ REBOL [
 ]
 
 context [
-    face-to-pdf: do %face-to-pdf-lib.r
+    face-to-pdf: do %../face-to-pdf-lib.r
 
     krumelur: load join dirize to-rebol-file get-env "BIOSERVO" %admin/Logo/090615-krumelur.png
 
