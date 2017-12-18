@@ -2,9 +2,17 @@ REBOL [
     title: {Make pdfs out of view objects}
     authour: {Johan Ingvast}
     help: {
+	Load library with:
+	>> do/args %face-to-pdf-lib.r 'face-to-pdf  
+	which exports the function face-to-pdf. Alternatively do 
+	>> lib: do %face-to-pdf-lib.r
+
 	Call with one argument being a face object
-	>> face-to-pdf/face-to-pdf face
-	or 
+	>> face-to-pdf face
+	alternatively
+	>> lib/face-to-pdf face
+	
+	Example
 	>> face-to-pdf-lib/face-to-pdf layout [ field "We are the champions" ]
 	In return you get a text stream. Save it to whatever file you want
 	>> write/binary %my.pdf face-to-pdf-lib/face-to-pdf layout [ text "This is file my.pdf" ]
@@ -33,7 +41,7 @@ REBOL [
 
 ]
 
-face-to-pdf: context [
+context [
 
     export: func [
 	{Exports any variable you give as argumment from this lib to your context}
@@ -247,14 +255,15 @@ face-to-pdf: context [
 	strea: copy [ ]
 	patterns: context [
 	    ; locals 
-	    p: radius: string: pair: none
+	    p: p1: p2: radius: string: pair: none
 	    current-pen:
 	    current-fill: none
 	    current-line-width: none
+	    current-line-pattern: none
 
 	    ; local functions
 	    stroke-aor-fill: does [
-		stroke-cmd: either current-pen
+		either current-pen
 		    [ either current-fill ['B] ['S ] ]
 		    [ either current-fill [ 'f] [ 'n ] ]
 	    ]
@@ -279,8 +288,7 @@ face-to-pdf: context [
 		'line-width set p number! ( current-line-width: p repend strea [ p 'w ] )
 	    ]
 	    line-pattern: [ 
-		'line-pattern (print "line-pattern" ) copy l-p [ none! | any number! ]
-		( current-line-pattern: l-p )
+		'line-pattern  copy current-line-pattern [ none! | any number! ]
 	    ]
 	    fill-pen:  [
 		'fill-pen [
@@ -303,7 +311,7 @@ face-to-pdf: context [
 	    ]
 	    circle: [
 		[ 'circle | 'ellipse ] set p pair!
-		    [ copy radius 1 2 number!  (   if 1 = length? probe radius [ append radius radius/1 ]  )
+		    [ copy radius 1 2 number!  (   if 1 = length? radius [ append radius radius/1 ]  )
 			| copy radius pair! ( radius: to-block radius )
 		    ]
 		    (
@@ -323,7 +331,7 @@ face-to-pdf: context [
 	    ]
 	    rotate: [
 		'rotate set p number! (
-		    append strea probe draw-commands/rotate 0 f/size/y negate p
+		    append strea draw-commands/rotate 0 f/size/y negate p
 		)
 	    ]
 	    push: [
@@ -410,7 +418,7 @@ face-to-pdf: context [
 			| push
 			| text
 			| font
-			| here: (print mold here) skip
+			| skip
 		    ]
 		] [
 		    make error! remold [ "Did not find end of pattern" here  newline "-----------------"]
@@ -585,12 +593,11 @@ face-to-pdf: context [
 	]
 	pane: get in face 'pane
 	if :pane [
-	    print "*Parsing pane"
 	    unless block? :pane [ pane: reduce [ :pane ] ]
 	    foreach p pane [
 		case [
 		    object? :p [
-			probe pos: as-pair p/offset/x face/size/y - ( p/offset/y + p/size/y)
+			pos: as-pair p/offset/x face/size/y - ( p/offset/y + p/size/y)
 			append strea 'q
 			append strea draw-commands/translate pos/x pos/y
 			save-current-font: current-font
@@ -639,7 +646,7 @@ face-to-pdf: context [
 	f-l: copy []
 	foreach f unique font-replacement [ repend f-l [ f doc/make-obj pdf-lib/font-dict! reduce [ f ]] ]
 	loop  length? font-list [
-	    fonts/add-obj  probe first+ font-list   select f-l probe first+ font-replacement
+	    fonts/add-obj  first+ font-list   select f-l first+ font-replacement
 	]
 
 	; Handle images
@@ -676,7 +683,12 @@ face-to-pdf: context [
 	; Creeate the object holding pages together
 	doc/make-obj/root pdf-lib/catalog-dict! [ pages ]
 	
-dbg: doc
 	doc/to-string
     ]
+
+    if system/script/args [
+	export system/script/args 
+    ]
+    
 ] 
+
