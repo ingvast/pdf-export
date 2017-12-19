@@ -252,6 +252,8 @@ context [
 
 	fy-py: func [ y ][ ( any [ all [  sz sz/y ] f/size/y ])  - y ]
 
+	fp-pp: func [ p ][ as-pair p/x ( any [ all [  sz sz/y ] f/size/y ])  - p/y ]
+
 	strea: copy [ ]
 	patterns: context [
 	    ; locals 
@@ -260,6 +262,7 @@ context [
 	    current-fill: none
 	    current-line-width: none
 	    current-line-pattern: none
+	    cmds: none
 
 	    ; local functions
 	    stroke-aor-fill: does [
@@ -276,7 +279,7 @@ context [
 	    box: [
 		'box set p1 pair! set p2 pair!
 		    opt [ set p number! ( print "Warning! Box corner radius is ignored" )]
-		    ( repend strea [ p1 p2 're stroke-aor-fill ] )
+		    ( repend strea [ fp-pp p1 p2 - p1 * 1x-1 're stroke-aor-fill ] )
 	    ]
 	    
 	    polygon: [
@@ -511,7 +514,7 @@ context [
 	]
 
 	if  block? p: face/effect [
-	    offset: any [
+	    offset: probe 1x1 * any [
 			all [ face/edge face/edge/size ]
 			0x0
 	    ]
@@ -539,7 +542,7 @@ context [
 	    n: 0
 	    current-font: face/font 
 	    while [  textinfo face line-info n ][
-		edge: either all [ face/edge face/edge/size ][ face/edge/size ] [ 0x0 ]
+		edge: either all [ face/edge face/edge/size ][ 1x1 * face/edge/size ] [ 0x0 ]
 		x: line-info/offset/x + edge/x
 		y: face/size/y
 		    - line-info/offset/y
@@ -558,7 +561,7 @@ context [
 	]
 	if all [ face/edge face/edge/size face/edge/color ][
 	    use [ edge size nw-color se-color ][
-		edge: face/edge/size size: face/size
+		edge: 1x1 * face/edge/size size: 1x1 * face/size
 		nw-color: se-color: face/edge/color
 		switch face/edge/effect [
 		    ibevel [
