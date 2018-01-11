@@ -126,6 +126,14 @@ context [
 	]
 	arc: 'TBD
 
+	matrix: func [
+	    {Transorms the image with coeffficinents for matrix}
+	    M
+	    /local 
+	][
+	    reduce [ M/1 M/2 M/3 M/4 M/5 M/6 'cm]
+	]
+
 	rotate: func [
 	    {Rotates the angle alpha (degrees) around (x,y)
 	    A: 
@@ -140,7 +148,7 @@ context [
 		x0 = ca*x0-sa+tx
 		tx = x0 - ca*x0 + sa*y0
 		y0 = sa*x0+ca*y0+ty
-		ty = y0-sa*x0-ca*y0}
+		ty = y0-sa*x0-ca*y0 }
 	    x0 y0 alpha
 	    /local ca sa Tx Ty cm Axx
 	][
@@ -258,6 +266,7 @@ context [
 	patterns: context [
 	    ; locals 
 	    p: p1: p2: radius: string: pair: none
+	    matrix: none
 	    current-pen:
 	    current-fill: none
 	    current-line-width: none
@@ -337,6 +346,15 @@ context [
 		    append strea draw-commands/rotate 0 f/size/y negate p
 		)
 	    ]
+	    use [ mtrx ][
+	    matrix: [
+		'matrix set mtrx block! (
+		    mtrx: copy mtrx
+		    mtrx/6: negate mtrx/6
+		    append strea draw-commands/matrix mtrx
+		)
+	    ]
+]
 	    push: [
 		'push set cmds block! 
 		(
@@ -418,6 +436,7 @@ context [
 			| translate
 			| scale
 			| rotate
+			| matrix
 			| push
 			| text
 			| font
