@@ -559,23 +559,28 @@ context [
 	    line-info: make system/view/line-info []
 	    n: 0
 	    current-font: face/font 
+	    append strea compose [
+		BT (register-font current-font) (face/font/size) Tf
+	    ]
 	    while [  textinfo face line-info n ][
 		edge: either all [ face/edge face/edge/size ][ 1x1 * face/edge/size ] [ 0x0 ]
 		x: line-info/offset/x + edge/x
-		y: face/size/y
-		    - line-info/offset/y
-		    - face/font/size
-		    - edge/y
+		y:  line-info/offset/y + 
+		     edge/y +
+		     face/font/size 
 		append strea compose [
-		    BT (register-font current-font) (face/font/size) Tf
+		    ;T (register-font current-font) (face/font/size) Tf
+		    1 0 0 -1 0 (2 * y) Tm
+		    ;1 0 0 -1 0 (2 * y ) cm
 		    (face/font/color) rg 
 		    ( reduce [ x y ] )
 		    Td
 		    (copy/part line-info/start line-info/num-chars) Tj
-		    ET
+		    ;ET
 		]
 		n: n + 1
 	    ]
+	    append strea 'ET
 	]
 	if all [ face/edge face/edge/size face/edge/color ][
 	    use [ edge size nw-color se-color ][
