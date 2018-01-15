@@ -258,9 +258,9 @@ context [
 	    render-mode  fnt 
     ][
 
-	fy-py: func [ y ][ ( any [ all [  sz sz/y ] f/size/y ])  - y ]
+	fy-py: func [ y ][  y ]
 
-	fp-pp: func [ p ][ as-pair p/x ( any [ all [  sz sz/y ] f/size/y ])  - p/y ]
+	fp-pp: func [ p ][ p ]
 
 	strea: copy [ ]
 	patterns: context [
@@ -288,7 +288,7 @@ context [
 	    box: [
 		'box set p1 pair! set p2 pair!
 		    opt [ set p number! ( print "Warning! Box corner radius is ignored" )]
-		    ( repend strea [ fp-pp p1 p2 - p1 * 1x-1 're stroke-aor-fill ] )
+		    ( repend strea [ fp-pp p1 p2 - p1 're stroke-aor-fill ] )
 	    ]
 	    
 	    polygon: [
@@ -333,28 +333,26 @@ context [
 	    ]
 	    translate: [
 		'translate set p pair! (
-		    append strea draw-commands/translate p/x negate p/y
+		    append strea draw-commands/translate p/x p/y
 		)
 	    ]
 	    scale: [
 		'scale copy p 2 number! (
-		    append strea draw-commands/scale/xy/around p/1 p/2 0 f/size/y
+		    append strea draw-commands/scale/xy/around p/1 p/2 0 0
 		)
 	    ]
 	    rotate: [
 		'rotate set p number! (
-		    append strea draw-commands/rotate 0 f/size/y negate p
+		    append strea draw-commands/rotate 0 0 p
 		)
 	    ]
 	    use [ mtrx ][
-	    matrix: [
-		'matrix set mtrx block! (
-		    mtrx: copy mtrx
-		    mtrx/6: negate mtrx/6
-		    append strea draw-commands/matrix mtrx
-		)
+		matrix: [
+		    'matrix set mtrx block! (
+			    append strea draw-commands/matrix mtrx
+			    )
+		]
 	    ]
-]
 	    push: [
 		'push set cmds block! 
 		(
@@ -390,13 +388,14 @@ context [
 		    repend strea [
 			'q
 			'BT
+			1 0 0 -1 0 2 * pair/2 + current-font/size 'cm
 		    ]
 		
 		    if all [ current-pen render-mode = 0 ][ repend strea [ current-pen  'rg ] ]
 		    repend strea [
 			register-font current-font current-font/size 'Tf
 			render-mode 'Tr
-			pair/x fy-py pair/y + current-font/size
+			pair/x fy-py pair/y ; current-font/size
 			'Td
 			string 'Tj
 		    ]
@@ -512,7 +511,7 @@ context [
     ][
 	strea: copy []
 
-	fy-py: func [ y ][ face/size/y - y ]
+	fy-py: func [ y ][ y ]
 
 	repend strea [ 0x0 face/size 're 'W 'n ] ; Set clipping
 	
@@ -619,7 +618,7 @@ context [
 	    foreach p pane [
 		case [
 		    object? :p [
-			pos: as-pair p/offset/x face/size/y - ( p/offset/y + p/size/y)
+			pos: as-pair p/offset/x p/offset/y
 			append strea 'q
 			append strea draw-commands/translate pos/x pos/y
 			save-current-font: current-font
@@ -656,7 +655,14 @@ context [
 	image-list: copy []
 	
 	; Make content
-	strea: parse-face face
+	strea: copy []
+	repend strea [
+	    1 0 0 -1 0 face/size/y
+	    'cm
+	]
+
+	append strea parse-face face
+? strea
 	graph: doc/make-obj pdf-lib/base-stream! strea
 
 	; Fonts
