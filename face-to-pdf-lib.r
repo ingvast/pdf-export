@@ -600,18 +600,19 @@ context [
 		    red 'RG
 		    nw-color 'rg
 		    0 0 'm
+		    size/x 0 'l
+		    size/x - edge/x edge/y 'l
 		    edge 'l
 		    edge/x size/y - edge/y 'l
-		    size/x - edge/x size/y - edge/y 'l
-		    size 'l
 		    0 size/y 'l
 		    'h  'f
+
 		    se-color 'rg
-		    0 0 'm
-		    edge 'l
+		    size 'm
+		    0 size/y 'l
+		    edge/x size/y - edge/y 'l
+		    size - edge 'l
 		    size/x - edge/x edge/y 'l
-		    size/x - edge/y size/y - edge/y 'l
-		    size 'l
 		    size/x 0 'l
 		    'h 'f
 		]
