@@ -30,10 +30,12 @@ dr: [ pen black fill-pen green line-width 1
 
 
 view/new f: layout [
-    area 400x400 long-string 
+    area 400x200 long-string 
+    image %/usr/share/pixmaps/faces/dice.jpg
     across
     button "Quit" #"q" [quit]
     btn "Lalla"
+    
     field "Tjossan hejsan"
 ]
 

@@ -127,7 +127,7 @@ context [
 	arc: 'TBD
 
 	matrix: func [
-	    {Transorms the image with coeffficinents for matrix}
+	    {Tranforms the image with coeffficinents for matrix}
 	    M
 	    /local 
 	][
@@ -525,7 +525,7 @@ context [
 	    reference: to-refinement register-image face/image
 	    repend strea [
 		; Assume scale 'fit
-		'q face/size/x 0 0 face/size/y 0 0 'cm 
+		'q face/size/x 0 0 negate face/size/y 0 face/size/y 'cm 
 		reference 'Do
 		'Q
 	    ]
