@@ -77,7 +77,7 @@ context [
 	closed
 	push
 	invert-matrix reset-matrix matrix
-	rotate  scale translate scew transformation
+	rotate  scale translate skew transformation
 	
 	arrow
 	clip
@@ -124,7 +124,47 @@ context [
 		x - rx y     'c 'h
 	    ]
 	]
-	arc: 'TBD
+	arc: func [ p R angle1 angle-span 
+		    /closed
+		    /local
+		    parts part-angle
+		    angle-next
+		    p1x p1y 
+		    p2x p2y 
+		    p3x p3y 
+		    p4x p4y 
+	][
+	    print "asdfasd"
+	    result: copy [ ]
+	    parts: round/ceiling angle-span / 90
+	    part-angle: angle-span / parts
+	    d:  4 / 3 * tangent part-angle / 4
+	    ? d
+	    repend result [ p/x + (R/x * cosine angle1) p/y + (R/y * sine angle1) 'm ]
+	    angle: angle1
+	    repeat i parts [
+		? angle
+		angle-next: angle + part-angle
+		p1x: p/x + (R/x * cosine angle )	p1y: p/y + (R/y * sine angle )
+		p4x: p/x + (R/x * cosine angle-next)	p4y: p/y + (R/y * sine angle-next)
+		p2x: p1x - (R/x * d * sine angle)	p2y: p1y + (R/y * d * cosine angle )
+		p3x: p4x + (R/x * d * sine angle-next)	p3y: p4y - (R/y * d * cosine angle-next)
+		repend result [
+		    p2x p2y 
+		    p3x p3y 
+		    p4x p4y 'c
+		    ;p2x p2y 'l
+		    ;p3x p3y 'l
+		    ;p4x p4y 'l
+		]
+		angle: angle-next
+	    ]
+	    repend result [ 
+		'S 
+	    ]
+	    ? result
+	    result
+	]
 
 	matrix: func [
 	    {Tranforms the image with coeffficinents for matrix}
@@ -187,6 +227,9 @@ context [
 	    y: any [ y 0 ]
 	    scaley: any [ scaley scalex ]
 	    reduce [ scalex 0 0 scaley 1 - scalex * x 1 - scaley * y 'cm ]
+	]
+	skew: func [ angle ][
+	    reduce [ 1 0 tangent angle 1 0 0 'cm ]
 	]
     ]
 
@@ -331,6 +374,23 @@ context [
 			append strea stroke-aor-fill
 		    )
 	    ]
+	    arc: [ 'arc ( points: copy [] angles: copy [] arg: none)
+		    any [ copy p  pair! ( append points p) |
+			  copy angle number! ( append angles angle ) |
+			  copy arg 'closed 
+		    ]
+		    (
+			either arg [
+			    append strea draw-commands/arc/closed
+				    first points last points
+				    first angles last angles 
+			] [
+			    append strea draw-commands/arc
+				    first points last points
+				    first angles last angles
+			]
+		    )
+	    ]
 	    translate: [
 		'translate set p pair! (
 		    append strea draw-commands/translate p/x p/y
@@ -344,6 +404,11 @@ context [
 	    rotate: [
 		'rotate set p number! (
 		    append strea draw-commands/rotate 0 0 p
+		)
+	    ]
+	    skew: [
+		'skew set p number! (
+		    append strea draw-commands/skew p
 		)
 	    ]
 	    use [ mtrx ][
@@ -432,10 +497,14 @@ context [
 			| fill-pen
 			| pen
 			| circle
+			| arc
 			| translate
 			| scale
 			| rotate
+			| skew 
 			| matrix
+			| [ 'reset-matrix | 'invert-matrix ]
+			    (print rejoin [ {Warning! "} here/1 {" not implemented}])
 			| push
 			| text
 			| font
