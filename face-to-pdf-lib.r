@@ -124,26 +124,27 @@ context [
 		x - rx y     'c 'h
 	    ]
 	]
-	arc: func [ p R angle1 angle-span 
+	arc: func [ p R angle1 angle-span  paint-command
 		    /closed
 		    /local
+		    result
 		    parts part-angle
+		    d angle
 		    angle-next
 		    p1x p1y 
 		    p2x p2y 
 		    p3x p3y 
 		    p4x p4y 
 	][
-	    print "asdfasd"
 	    result: copy [ ]
 	    parts: round/ceiling angle-span / 90
 	    part-angle: angle-span / parts
 	    d:  4 / 3 * tangent part-angle / 4
-	    ? d
-	    repend result [ p/x + (R/x * cosine angle1) p/y + (R/y * sine angle1) 'm ]
+	    if  closed [ repend result [ p 'm ] ]
+	    repend result [ p/x + (R/x * cosine angle1) p/y + (R/y * sine angle1) ]
+	    repend result either closed [ 'l ][ 'm] 
 	    angle: angle1
 	    repeat i parts [
-		? angle
 		angle-next: angle + part-angle
 		p1x: p/x + (R/x * cosine angle )	p1y: p/y + (R/y * sine angle )
 		p4x: p/x + (R/x * cosine angle-next)	p4y: p/y + (R/y * sine angle-next)
@@ -153,16 +154,11 @@ context [
 		    p2x p2y 
 		    p3x p3y 
 		    p4x p4y 'c
-		    ;p2x p2y 'l
-		    ;p3x p3y 'l
-		    ;p4x p4y 'l
 		]
 		angle: angle-next
 	    ]
-	    repend result [ 
-		'S 
-	    ]
-	    ? result
+	    if closed [ append result 'h ] 
+	    if paint-command [ repend result paint-command ]
 	    result
 	]
 
@@ -384,10 +380,12 @@ context [
 			    append strea draw-commands/arc/closed
 				    first points last points
 				    first angles last angles 
+				    stroke-aor-fill
 			] [
 			    append strea draw-commands/arc
 				    first points last points
 				    first angles last angles
+				    stroke-aor-fill
 			]
 		    )
 	    ]
