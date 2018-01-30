@@ -277,7 +277,7 @@ context [
 	unless find/skip next image-list image 2 [
 	    repend  image-list [name image]
 	]
-	?? name
+	name
     ]
 
     has-alpha: func [ im [
@@ -296,6 +296,7 @@ context [
 	/local p s color strea patterns fy-py 
 	    render-mode  fnt 
     ][
+	warning: func [ s ][ print [ "Warning!" s ] ]
 
 	fy-py: func [ y ][  y ]
 
@@ -328,6 +329,8 @@ context [
 		'box set p1 pair! set p2 pair!
 		    opt [ set p number! ( print "Warning! Box corner radius is ignored" )]
 		    ( repend strea [ fp-pp p1 p2 - p1 're stroke-aor-fill ] )
+	    ]
+	    triangle: [
 	    ]
 	    
 	    polygon: [
@@ -363,7 +366,7 @@ context [
 	    circle: [
 		[ 'circle | 'ellipse ] set p pair!
 		    [ copy radius 1 2 number!  (   if 1 = length? radius [ append radius radius/1 ]  )
-			| copy radius pair! ( radius: to-block radius )
+			| set radius pair! ( radius: reduce[ radius/x radius/y ] )
 		    ]
 		    (
 			append strea draw-commands/circle/xy p/x fy-py p/y radius/1 radius/2
@@ -469,6 +472,41 @@ context [
 		    ]
 		)
 	    ]
+	    use [ point-list img fail-pattern ][
+		image: [
+		    'image (point-list: copy [] img: none )
+			any [ here:
+			    set p pair! ( append point-list p )
+			    | set p word! (
+				either image? get p [
+				    fail-pattern: []
+				    img: get p
+				][
+				    fail-pattern: "slkdj saj dkjajsdflkiewvnndloaweu"
+				]
+			    ) fail-pattern
+			    | set img image!
+			] (
+			    either 4 <= length? point-list [
+				warning "Cannot handle more than one  points for images in draw dialect"
+			    ][
+				either image [
+				    reference: to-refinement register-image img
+				    repend strea [
+					; Assume scale 'fit
+					'q img/size/x 0 0 negate img/size/y
+						point-list/1/x point-list/1/y + img/size/y
+						'cm 
+					reference 'Do
+					'Q
+				    ]
+				][
+				    warning "No image found"
+				]
+			    ]
+			)
+		]
+	    ]
 	    font: [
 		'font set fnt object!
 		(
@@ -489,6 +527,7 @@ context [
 		    any [ here:
 			  line 
 			| polygon
+			;| triangle
 			| box
 			| line-width
 			| line-pattern
@@ -496,6 +535,7 @@ context [
 			| pen
 			| circle
 			| arc
+			| image
 			| translate
 			| scale
 			| rotate
@@ -599,7 +639,7 @@ context [
 	]
 
 	if  block? p: face/effect [
-	    offset: probe 1x1 * any [
+	    offset: 1x1 * any [
 			all [ face/edge face/edge/size ]
 			0x0
 	    ]
@@ -735,7 +775,6 @@ context [
 	]
 
 	append strea parse-face face
-? strea
 	graph: doc/make-obj pdf-lib/base-stream! strea
 
 	; Fonts
