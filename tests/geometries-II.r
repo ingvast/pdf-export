@@ -49,11 +49,14 @@ cat-eye: load %/usr/share/pixmaps/faces/cat-eye.jpg
 
 dr9: [
     font fnt text vectorial "Image" 
-    image 15x15 puppy
+    image 15x15 cat-eye ;puppy
 ]
 dr10: [
     font fnt text vectorial "Image" 
+    ;image 80x5 puppy
     image 80x5 140x50 20x140 5x20 cat-eye
+    scale 0.5 0.5
+    image puppy 140x50 20x140 5x20 
 ]
 dr11: [
     font fnt text vectorial "" 

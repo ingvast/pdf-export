@@ -457,6 +457,93 @@ context [
     XObjects-dict!: make objs-dict! [
 	Type: /XObjects
     ]
+    shadings-dict!:  make objs-dict! [
+	Type: /Shading
+    ]
+
+
+    shading-dict!: make base-obj! [
+	append dict [ Type PatternType ShadingType  ColorSpace ]
+	PatternType: 2
+	ShadingType: none
+	ColorSpace: /DeviceRGB
+    ]
+
+    shading-triangles-dict!: make base-stream! [
+	append dict [
+	    Type PatternType ShadingType
+	    ColorSpace Decode BitsPerComponent
+	    BitsPerCoordinate BitsPerFlag
+	]
+	Type: /Pattern
+	PatternType: 2
+	ShadingType: 4
+	ColorSpace: /DeviceRGB
+	BitsPerCoordinate: 8
+	BitsPerComponent: 8
+	BitsPerFlag: 8
+	Decode: [ 0 300 0 300 0 1 0 1 0 1]
+	componentsToBin: func [
+	     value [integer!] {A unsigned value to make binary}
+	     bits [integer!] {A value of number of bits, steps of 8}
+	     /local result 
+	][
+	    result: copy []
+	    repeat i bits / 8 [
+		insert result value and 255
+		value: shift value 8
+	    ]
+	    make binary! result
+	]
+	to-binary-string: func [ 
+	    /local
+		inter
+		result
+	][
+	    inter: copy []
+	    stream: reduce stream
+	    foreach item stream [
+		probe item
+		switch/default type? item reduce [ 
+		    integer! [ append  inter item ]
+		    pair! [ repend inter [ item/x item/y ] ]
+		    tuple! [ foreach b to-binary item [ append inter b ] ]
+		] [
+		    make error!  reform [
+			"Error:"
+			type? item
+			"Cannot be given in shading triangles streams"
+		    ]
+		]
+	    ]
+	    ? inter
+	    result: copy #{}
+	    foreach [ flag x y r g b ] inter [
+		append result componentsToBin flag BitsPerFlag
+		append result componentsToBin x BitsPerCoordinate
+		append result componentsToBin y BitsPerCoordinate
+		append result componentsToBin r BitsPerComponent
+		append result componentsToBin g BitsPerComponent
+		append result componentsToBin b BitsPerComponent
+	    ]
+	    result
+	]
+	to-string: func [ obj-list ] [
+	    unless block? stream [ stream: reduce [ stream ] ]
+
+	    stream-string: to-binary-string
+
+	    to-string*/is-stream obj-list
+	    append string stream-start
+	    append string newline
+	    append string stream-string
+	    append string newline
+
+	    if stream-end [ repend string [ stream-end newline ] ]
+	    if footer [ repend string  [ footer newline ] ]
+	    string
+	]
+    ]
 
     resources-dict!: make base-obj! [
 	Type: /Resource
@@ -464,7 +551,8 @@ context [
 	XObject: none
 	ExtGState: none
 	ProcSet: [ /PDF /Text /ImageB /ImageC /ImageI ]
-	append dict [ Font XObject ProcSet ExtGState ]
+	Shading: none
+	append dict [ Shading Font XObject ProcSet ExtGState ]
 	init: func [ spec ][
 	    foreach s spec [
 		if word? s [ s: get s ]
@@ -474,6 +562,9 @@ context [
 		    ]
 		    /XObjects [
 			XObject: s
+		    ]
+		    /Shading [
+			Shading: s
 		    ]
 		]
 	    ]
@@ -680,7 +771,7 @@ context [
 		q 4  w 0 1 0 RG 100 100 m 200 100 l 200 200 l 100 200 l s Q
 		q 100 0 0 24 150 150 cm /logo.gif Do Q
 		q 50 0 0 50 10x10 cm /pix Do Q
-	]
+	    ]
 	    text: doc/make-obj base-stream! compose [
 		BT 0 0 0 rg /Times-Roman 18 Tf 100 100 Td "Hello" Tj ET
 		BT 0 0 1 rg /H 18 Tf 200 100 Td "Blue air" Tj ET
@@ -694,6 +785,40 @@ context [
 	    catalog: doc/make-obj/root catalog-dict! [ pages ]
 
 	    write %newer.pdf doc/to-string
+	    true
+	] [
+	    err: disarm err
+	    ? err
+	]
+    ]
+    test-triangles: func [
+    ][
+	if error? err: try [
+	    
+	    doc: prepare-pdf
+
+	    triangle: doc/make-obj shading-triangles-dict! [
+		0 100x100  red
+		0 200x0    green
+		0 255x200  blue
+	    ]
+	    cont: doc/make-obj base-stream! compose [
+		0 0.5 0.8 RG
+		8 w
+		100x100 m
+		400x300 l
+		300x0 l h
+		s
+		/tri sh
+	    ]
+	    shades: doc/make-obj shadings-dict! [ /tri triangle ]
+	    resource: doc/make-obj resources-dict! [ shades ]
+	    page: doc/make-obj page-dict! [ resource cont ]
+	    page/set-mediaBox [ 0 0 400 300 ]
+	    pages: doc/make-obj pages-dict! [ page ]
+	    catalog: doc/make-obj/root catalog-dict! [ pages ]
+
+	    write %triangle.pdf doc/to-string
 	    true
 	] [
 	    err: disarm err

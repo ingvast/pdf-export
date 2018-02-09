@@ -487,21 +487,66 @@ context [
 			    ) fail-pattern
 			    | set img image!
 			] (
-			    either 4 <= length? point-list [
-				warning "Cannot handle more than one  points for images in draw dialect"
-			    ][
-				either image [
+			    p: point-list
+			    if 4 <= length? p [
+				warning "Cannot handle four point image transformation in draw dialect"
+				warning "Ignoring last point"
+			    ]
+			    case [ 
+				not img
+				[
+				    warning "No image found"
+				]
+				true
+				[
+				    if empty? p [
+					p: copy [ 0x0 ]
+				    ; Calculate the transformation matrix
+				    ]
+				    if 1 == length? p [
+					append p img/size + p/1
+				    ]
+				    if 2 == length? p [
+					insert at p 2 as-pair p/2/x p/1/y
+				    ]
+				    M: copy [ 0 0 0 0 0 0]
+				    ; calculate the transformation
+				    ; p/1 = T(0x1)
+				    ; p/2 = T(1x1)
+				    ; p/3 = T(1x0) 
+				    ; 
+				    ; p/1/x = M/1 * 0 + M/3 * 1 + M/5
+				    ; p/1/y = M/2 * 0 + M/4 * 1 + M/6
+
+				    ; p/2/x = M/1 * 1 + M/3 * 1 + M/5
+				    ; p/2/y = M/2 * 1 + M/4 * 1 + M/6
+
+				    ; p/3/x = M/1 * 1 + M/3 * 0 + M/5
+				    ; p/3/y = M/2 * 1 + M/4 * 0 + M/6
+
+				    ;(2) - (1)
+				    ; p/2/x - p/1/x =   M/1
+				    ; p/2/y - p/1/y =   M/2
+				    M/1: p/2/x - p/1/x
+				    M/2: p/2/y - p/1/y
+				    ; (3)
+				    ; p/3/x = M/1 + M/5
+				    ; p/3/y = M/2 + M/6
+				    M/5: p/3/x - M/1
+				    M/6: p/3/y - M/2
+				    ; (1)
+				    ; p/1/x = M/3 + M/5
+				    ; p/1/y = M/4 + M/6
+				    M/3: p/1/x - M/5
+				    M/4: p/1/y - M/6
+
 				    reference: to-refinement register-image img
-				    repend strea [
-					; Assume scale 'fit
-					'q img/size/x 0 0 negate img/size/y
-						point-list/1/x point-list/1/y + img/size/y
-						'cm 
-					reference 'Do
+				    append strea compose [
+					q
+					    (M) cm 
+					    (reference) Do
 					'Q
 				    ]
-				][
-				    warning "No image found"
 				]
 			    ]
 			)
