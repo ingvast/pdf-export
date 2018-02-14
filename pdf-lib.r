@@ -470,6 +470,32 @@ context [
     ]
 
     shading-triangles-dict!: make base-stream! [
+	doc: {
+	    Makes shaded triangles, i.e. triangles with specified color in each corner.
+	    Colors are interpolated inbetween.
+	    Nodes of triangles are given in the stream.
+	    Format of the nodes are:
+		flag x-coord y-coord red green blue
+	    The function then transforms them to binary format and also sets the Decode
+	    vector so that one point in the coordinates is one point in the shading scale.
+	    If you want details smaller than one point you need to scale first or fibble with 
+	    the methods.
+	    Flag tells which of the nodes of previous triangle that should not be used in
+	    the next. Number starts counting with 1.  The zeroth index means start over a 
+	    independent triangle.
+	    The object is set for using DeviceRGB only, but should be pretty easy to change to 
+	    other.
+	    Colors are given as tuples or three numbers of 0-255. 
+	    Coordinates -32767 -- 32767.
+
+	    The final result of the given stream is transformed into a binary stream, however
+	    not compressed. (It is not allowed to have it in nonbinary form).
+
+	    To draw the triangles, simply
+		/name-of-pattern sh
+
+	    I have not figured out how to use the pattern as a color for general painting.
+	}
 	append dict [
 	    Type PatternType ShadingType
 	    ColorSpace Decode BitsPerComponent
@@ -479,10 +505,10 @@ context [
 	PatternType: 2
 	ShadingType: 4
 	ColorSpace: /DeviceRGB
-	BitsPerCoordinate: 8
-	BitsPerComponent: 8
 	BitsPerFlag: 8
-	Decode: [ 0 300 0 300 0 1 0 1 0 1]
+	BitsPerCoordinate: 16
+	BitsPerComponent: 8
+	Decode: none
 	componentsToBin: func [
 	     value [integer!] {A unsigned value to make binary}
 	     bits [integer!] {A value of number of bits, steps of 8}
@@ -495,13 +521,20 @@ context [
 	    ]
 	    make binary! result
 	]
+	bin-to-block: func [ bin /local p result ][
+	    result: copy []
+	    parse/all bin [ any [ copy p skip ( append result to-integer to-char p ) ] ]
+	    result 
+	]
 	to-binary-string: func [ 
 	    /local
-		inter
+		inter shifting base
 		result
 	][
+	    base: to-integer 2 ** BitsPerCoordinate
+	    shifting: base / 2
+	    Decode: reduce [ negate shifting shifting negate shifting shifting 0 1 0 1 0 1]
 	    inter: copy []
-	    stream: reduce stream
 	    foreach item stream [
 		probe item
 		switch/default type? item reduce [ 
@@ -516,12 +549,11 @@ context [
 		    ]
 		]
 	    ]
-	    ? inter
 	    result: copy #{}
 	    foreach [ flag x y r g b ] inter [
 		append result componentsToBin flag BitsPerFlag
-		append result componentsToBin x BitsPerCoordinate
-		append result componentsToBin y BitsPerCoordinate
+		append result componentsToBin probe x + ?? shifting BitsPerCoordinate
+		append result componentsToBin y + shifting BitsPerCoordinate
 		append result componentsToBin r BitsPerComponent
 		append result componentsToBin g BitsPerComponent
 		append result componentsToBin b BitsPerComponent
@@ -531,6 +563,7 @@ context [
 	to-string: func [ obj-list ] [
 	    unless block? stream [ stream: reduce [ stream ] ]
 
+	    stream: reduce stream
 	    stream-string: to-binary-string
 
 	    to-string*/is-stream obj-list
@@ -797,19 +830,30 @@ context [
 	    
 	    doc: prepare-pdf
 
+	    ; When decoding the data of the shadings triangle dictionary 
+	    ; the coordinates will be transformed (shifted up BitsPerCoordinate -1)
+	    ; and the decode will be from negative the same to positive.
+	    ; that way there can be negative coordinates below.
 	    triangle: doc/make-obj shading-triangles-dict! [
+		; flag x y color
 		0 100x100  red
 		0 200x0    green
 		0 255x200  blue
+		3 0x0   black ; flag tells which coordinate of last triangle to drop
 	    ]
+	    base: 2 ** 16
+	    triangle/BitsPerCoordinate: 16
+	    triangle/Decode: reduce [ 0 base 0 base 0 1 0 1 0 1 ]
 	    cont: doc/make-obj base-stream! compose [
+
+		1 0.1 -0.15 0.9 -50 100 cm
 		0 0.5 0.8 RG
-		8 w
-		100x100 m
-		400x300 l
-		300x0 l h
-		s
+		4 w
 		/tri sh
+		100x100 m
+		200x0 l
+		255x200 l h
+		s
 	    ]
 	    shades: doc/make-obj shadings-dict! [ /tri triangle ]
 	    resource: doc/make-obj resources-dict! [ shades ]
