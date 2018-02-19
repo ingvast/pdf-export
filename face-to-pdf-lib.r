@@ -257,6 +257,7 @@ context [
 
     font-list: copy []
     image-list: copy []
+    triangle-list: copy [ ]
 
     register-font: func [ name /local tmp ][
 	if object? name [
@@ -276,6 +277,14 @@ context [
 	name: create-unique-name image
 	unless find/skip next image-list image 2 [
 	    repend  image-list [name image]
+	]
+	name
+    ]
+
+    register-triangle: func [ stream ][
+	name: create-unique-name/pre stream "T-"
+	unless find/skip triangle-list name 2 [
+	    repend triangle-list [ name stream ]
 	]
 	name
     ]
@@ -330,7 +339,24 @@ context [
 		    opt [ set p number! ( print "Warning! Box corner radius is ignored" )]
 		    ( repend strea [ fp-pp p1 p2 - p1 're stroke-aor-fill ] )
 	    ]
-	    triangle: [
+	    use [ str p colors ][
+		triangle: [
+		    'triangle
+		    copy p 3 pair!  copy colors 3 tuple! opt decimal!
+		    (
+			str: reduce [
+			    0 p/1 colors/1 
+			    0 p/2 colors/2
+			    0 p/3 colors/3
+			]
+
+			name: register-triangle str
+			;add-to-patterns name
+			append strea compose [
+			    (to-refinement name ) sh
+			]
+		    )
+		]
 	    ]
 	    
 	    polygon: [
@@ -572,7 +598,7 @@ context [
 		    any [ here:
 			  line 
 			| polygon
-			;| triangle
+			| triangle
 			| box
 			| line-width
 			| line-pattern
@@ -852,11 +878,19 @@ context [
 
 	]
 
+	; Handle patterns
+	shadings: doc/make-obj pdf-lib/shadings-dict!  []
+	foreach [name shade] triangle-list [
+	    shade-obj: doc/make-obj pdf-lib/shading-triangles-dict! shade
+	    shadings/add-obj name shade-obj
+	]
+	? shadings
+
 	; Register resources
 	resource: doc/make-obj pdf-lib/resources-dict! [  ]
 	unless empty? images/value-list [ resource/XObject: images ]
 	unless empty? fonts/value-list [ resource/Font: fonts ]
-	    
+	unless empty? shadings/value-list [ resource/Shading: shadings ]
 
 	; Create page
 	page: doc/make-obj pdf-lib/page-dict! [ graph resource ]

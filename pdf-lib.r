@@ -495,6 +495,8 @@ context [
 		/name-of-pattern sh
 
 	    I have not figured out how to use the pattern as a color for general painting.
+
+	    See also the  method test-triangles
 	}
 	append dict [
 	    Type PatternType ShadingType
@@ -841,11 +843,7 @@ context [
 		0 255x200  blue
 		3 0x0   black ; flag tells which coordinate of last triangle to drop
 	    ]
-	    base: 2 ** 16
-	    triangle/BitsPerCoordinate: 16
-	    triangle/Decode: reduce [ 0 base 0 base 0 1 0 1 0 1 ]
 	    cont: doc/make-obj base-stream! compose [
-
 		1 0.1 -0.15 0.9 -50 100 cm
 		0 0.5 0.8 RG
 		4 w
