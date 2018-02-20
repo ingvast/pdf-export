@@ -336,7 +336,7 @@ context [
 	    ]
 	    box: [
 		'box set p1 pair! set p2 pair!
-		    opt [ set p number! ( print "Warning! Box corner radius is ignored" )]
+		    opt [ set p number! ( warning "Box corner radius is ignored" )]
 		    ( repend strea [ fp-pp p1 p2 - p1 're stroke-aor-fill ] )
 	    ]
 	    use [ str p colors ][
@@ -354,6 +354,15 @@ context [
 			;add-to-patterns name
 			append strea compose [
 			    (to-refinement name ) sh
+			]
+			if current-pen [
+			    set-current-env
+			    repend strea [
+				p/1 'm
+				p/2 'l
+				p/3 'l
+				'h 's 
+			    ]
 			]
 		    )
 		]
@@ -450,6 +459,7 @@ context [
 		(
 		    repend strea [ 
 			'q ]
+		    set-current-env
 		    eval-patterns cmds
 		    repend strea [ 'Q
 			]
@@ -483,7 +493,9 @@ context [
 			1 0 0 -1 0 2 * pair/2 + current-font/size 'cm
 		    ]
 		
-		    if all [ current-pen render-mode = 0 ][ repend strea [ current-pen  'rg ] ]
+		    either all [ current-pen render-mode = 0 ]
+			[ repend strea [ current-pen  'rg ] ]
+			[ set-current-env ]
 		    repend strea [
 			register-font current-font current-font/size 'Tf
 			render-mode 'Tr
@@ -585,7 +597,7 @@ context [
 		)
 	    ]
 	    set-current-env: does [
-		if current-pen  [ repend strea [ current-pen 'rg ] ]
+		if current-pen  [ repend strea [ current-pen 'RG ] ]
 		if current-fill [ repend strea [ current-fill 'rg ] ]
 		repend strea [ current-line-width 'w ]
 	    ]
@@ -613,7 +625,7 @@ context [
 			| skew 
 			| matrix
 			| [ 'reset-matrix | 'invert-matrix ]
-			    (print rejoin [ {Warning! "} here/1 {" not implemented}])
+			    (warning rejoin [  here/1 {" not implemented}])
 			| push
 			| text
 			| font
@@ -884,7 +896,6 @@ context [
 	    shade-obj: doc/make-obj pdf-lib/shading-triangles-dict! shade
 	    shadings/add-obj name shade-obj
 	]
-	? shadings
 
 	; Register resources
 	resource: doc/make-obj pdf-lib/resources-dict! [  ]

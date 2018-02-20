@@ -86,7 +86,10 @@ dr: [
 
 
 view/new/offset layout [ text "test av geometrier"
-    f: box yellow * 1.5 900x400 effect [ grid 150x150 0x0 2 3 black draw dr ]
+    f: box yellow * 1.5 900x400 effect [
+	draw dr
+	grid 150x150 0x0 2 3 black
+    ]
     key #"q" [quit]
 ] 0x0
 

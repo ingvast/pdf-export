@@ -538,7 +538,7 @@ context [
 	    Decode: reduce [ negate shifting shifting negate shifting shifting 0 1 0 1 0 1]
 	    inter: copy []
 	    foreach item stream [
-		probe item
+		item
 		switch/default type? item reduce [ 
 		    integer! [ append  inter item ]
 		    pair! [ repend inter [ item/x item/y ] ]
@@ -554,7 +554,7 @@ context [
 	    result: copy #{}
 	    foreach [ flag x y r g b ] inter [
 		append result componentsToBin flag BitsPerFlag
-		append result componentsToBin probe x + ?? shifting BitsPerCoordinate
+		append result componentsToBin x + shifting BitsPerCoordinate
 		append result componentsToBin y + shifting BitsPerCoordinate
 		append result componentsToBin r BitsPerComponent
 		append result componentsToBin g BitsPerComponent
