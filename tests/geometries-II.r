@@ -43,6 +43,8 @@ dr7: [
 dr8: [
     font fnt text vectorial "Triangle"
     triangle 12x12 120x80 80x130 green red blue
+    pen none
+    triangle 80x10 30x22 100x30 blue white magenta
 ]
 puppy: load %/usr/share/pixmaps/faces/puppy.jpg
 cat-eye: load %/usr/share/pixmaps/faces/cat-eye.jpg
@@ -59,7 +61,26 @@ dr10: [
     image puppy 140x50 20x140 5x20 
 ]
 dr11: [
-    font fnt text vectorial "" 
+    font fnt text 0x0 vectorial "Curve"
+    pen green
+    fill-pen none
+    line-width 3
+    line 15x15 100x15 100x100 15x100 
+    curve 15x15 100x15 100x100 15x100 
+    line-width 1
+    pen red fill-pen sky
+    curve 25x25 90x25 90x90 25x90 
+]
+dr12: [
+    font fnt text vectorial "Clip Funny in Rebol" 
+    fill-pen none pen green line-width 5
+    box 20x20 140x140
+    line-width 1
+    box 80x80 160x160
+    clip 80x80 160x160
+    fill-pen blue pen red line-width 2
+    box 20x20 140x140
+
 ]
     
 
@@ -79,6 +100,8 @@ dr: [
 	push dr8 translate 150x0
 	push dr9 translate 150x0
 	push dr10 translate 150x0
+	push dr11 translate 150x0
+	push dr12 translate 150x0
     ]
 ]
 

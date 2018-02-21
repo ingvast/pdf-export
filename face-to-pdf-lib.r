@@ -19,6 +19,9 @@ REBOL [
 	
 	One pixel in the face will be one point in the pdf document.
 
+	The clip command has been implemented. However, it does not seem to work properly in Rebol.
+	It is however made to reflect what I think should have been done in rebol.
+
 }
     TODO: {
 	* Fix so that images not is taken from one document to next
@@ -27,8 +30,14 @@ REBOL [
 	* Clean up, hide scope
 	* Fix some compressions
 	* Handle gradients
-	* Handle the rest of draw commands (arc ...)
 	* Make use of font given. (Write font data to pdf)
+	* Handle the rest of draw commands 
+	    - arrow
+	    - line patterns
+	    - fill pen patterns
+	    - line join
+	    - line cap
+	    - shape (or maybe not)
     }
     DONE: {
 	* Handle alpha values
@@ -367,6 +376,11 @@ context [
 		    )
 		]
 	    ]
+
+	    clip: [
+		'clip set p1 pair! set p2 pair!
+		    ( repend strea [ p1 p2 - p1 're 'W 'n ] )
+	    ]
 	    
 	    polygon: [
 		'polygon opt [ set p pair! ( repend strea [ p/x fy-py p/y 'm ] ) ]
@@ -426,6 +440,19 @@ context [
 				    stroke-aor-fill
 			]
 		    )
+	    ]
+	    curve: [ 'curve
+		[
+		    copy p 4 pair!
+		    | copy p 3 pair! ( insert at p 2 p/2)
+		]
+		( 
+		    repend strea [
+			p/1 'm
+			p/2 p/3 p/4 'c
+			stroke-aor-fill
+		    ]
+		)
 	    ]
 	    translate: [
 		'translate set p pair! (
@@ -499,7 +526,7 @@ context [
 		    repend strea [
 			register-font current-font current-font/size 'Tf
 			render-mode 'Tr
-			pair/x fy-py pair/y ; current-font/size
+			pair/x fy-py pair/y 
 			'Td
 			string 'Tj
 		    ]
@@ -616,8 +643,10 @@ context [
 			| line-pattern
 			| fill-pen
 			| pen
+			| clip
 			| circle
 			| arc
+			| curve
 			| image
 			| translate
 			| scale
