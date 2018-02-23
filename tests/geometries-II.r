@@ -82,6 +82,57 @@ dr12: [
     box 20x20 140x140
 
 ]
+
+dr13: [
+    font fnt text vectorial "Line caps"
+    line-width 6 pen red
+    line 10x20 10x70
+    line-cap butt
+    line 30x20 30x70
+    line-cap round
+    line 50x20 50x70
+    line-cap square
+    line 70x20 70x70
+    line-cap butt
+
+    translate 80x0
+    pen none fill-pen black
+    font fnt text vectorial "Line joins"
+    fill-pen none
+    line-width 10 pen red 
+    translate 0x20
+    spline 1 10x0 30x30 50x0
+
+    line-join miter
+    translate 0x20
+    spline 1 10x0 30x30 50x0
+
+    line-join miter-bevel
+    translate 0x20
+    spline 1 10x0 30x30 50x0
+
+    translate 0x20
+    line-join round
+    spline 1 10x0 30x30 50x0
+
+    line-join bevel
+    translate 0x20
+    spline 1 10x0 30x30 50x0
+
+]
+dr14: [
+    pen none fill-pen black
+    font fnt text vectorial "Miter-bevel"
+    fill-pen none
+    line-join miter-bevel
+    line-width 3 pen red 
+    spline 1 50x140 75x120 100x140
+    spline 1 50x140 75x100 100x140
+    spline 1 50x140 75x80 100x140
+    spline 1 50x140 75x60 100x140
+    spline 1 50x140 75x40 100x140
+    spline 1 50x140 75x20 100x140
+]
     
 
 dr: [
@@ -101,7 +152,12 @@ dr: [
 	push dr9 translate 150x0
 	push dr10 translate 150x0
 	push dr11 translate 150x0
-	push dr12 translate 150x0
+	;push dr12 translate 150x0
+    ]
+    translate 0x150
+    push[
+	push dr13 translate 150x0
+	push dr14 translate 150x0
     ]
 ]
 
@@ -109,7 +165,7 @@ dr: [
 
 
 view/new/offset layout [ text "test av geometrier"
-    f: box yellow * 1.5 900x400 effect [
+    f: box yellow * 1.5 900x450 effect [
 	draw dr
 	grid 150x150 0x0 2 3 black
     ]

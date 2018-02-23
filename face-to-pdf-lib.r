@@ -329,6 +329,9 @@ context [
 	    current-fill: none
 	    current-line-width: none
 	    current-line-pattern: none
+	    current-line-cap: 0
+	    current-line-join: 0
+	    current-miter-limit: none
 	    cmds: none
 
 	    ; local functions
@@ -340,6 +343,11 @@ context [
 	    ; Patterns
 	    line: [
 		'line opt [ set p pair! ( repend strea [ p/x fy-py p/y 'm ] ) ]
+		      any [ set p pair! ( repend strea [ p/x fy-py p/y 'l ] )]
+		(append strea 'S) 
+	    ]
+	    spline: [
+		'spline integer! opt [ set p pair! ( repend strea [ p/x fy-py p/y 'm ] ) ]
 		      any [ set p pair! ( repend strea [ p/x fy-py p/y 'l ] )]
 		(append strea 'S) 
 	    ]
@@ -386,31 +394,6 @@ context [
 		'polygon opt [ set p pair! ( repend strea [ p/x fy-py p/y 'm ] ) ]
 			 any [ set p pair! ( repend strea [ p/x fy-py p/y 'l ] )]
 		    (append strea 'h append strea stroke-aor-fill)
-	    ]
-	    line-width: [
-		'line-width set p number! ( current-line-width: p repend strea [ p 'w ] )
-	    ]
-	    line-pattern: [ 
-		'line-pattern  copy current-line-pattern [ none! | any number! ]
-	    ]
-	    fill-pen:  [
-		'fill-pen [
-		    set color tuple! (
-			current-fill:  color 
-			repend strea [ current-fill 'rg ]
-		    ) 
-		    | 
-		    none! ( current-fill: none )
-		]
-	    ]
-	    pen:  [
-		'pen [
-		    set color tuple! (
-			current-pen: color
-			repend strea [ current-pen 'RG ]
-		    ) 
-		    | none! ( current-pen: none )
-		]
 	    ]
 	    circle: [
 		[ 'circle | 'ellipse ] set p pair!
@@ -623,10 +606,59 @@ context [
 		    current-font: fnt
 		)
 	    ]
+	    line-width: [
+		'line-width set p number! ( current-line-width: p repend strea [ p 'w ] )
+	    ]
+	    line-pattern: [ 
+		'line-pattern  copy current-line-pattern [ none! | any number! ]
+	    ]
+	    fill-pen:  [
+		'fill-pen [
+		    set color tuple! (
+			current-fill:  color 
+			repend strea [ current-fill 'rg ]
+		    ) 
+		    | 
+		    none! ( current-fill: none )
+		]
+	    ]
+	    pen:  [
+		'pen [
+		    set color tuple! (
+			current-pen: color
+			repend strea [ current-pen 'RG ]
+		    ) 
+		    | none! ( current-pen: none )
+		]
+	    ]
+	    line-join: [
+		'line-join [
+		    'miter ( current-line-join: 0 current-miter-limit: 10 )
+		    | 'miter-bevel (current-line-join: 0 current-miter-limit: 4 )
+		    | 'round (current-line-join: 1 current-miter-limit: none )
+		    | 'bevel (current-line-join: 2 current-miter-limit: none )
+		]
+		( repend strea [ current-line-join 'j ]
+		  if current-miter-limit [ repend strea [ current-miter-limit 'M ] ]
+		)
+	    ]
+	    line-cap: [
+		'line-cap [
+		    'butt ( current-line-cap: 0)
+		    | 'round (current-line-cap: 1)
+		    | 'square (current-line-cap: 2)
+		]
+		( repend strea [ current-line-cap 'J] )
+	    ]
 	    set-current-env: does [
 		if current-pen  [ repend strea [ current-pen 'RG ] ]
 		if current-fill [ repend strea [ current-fill 'rg ] ]
-		repend strea [ current-line-width 'w ]
+		if current-miter-limit [ repend strea [ current-miter-limit 'M ] ]
+		repend strea [
+		    current-line-width 'w
+		    current-line-cap 'J
+		    current-line-join 'j
+		]
 	    ]
 
 	    eval-patterns: func [ pattern /local here ][
@@ -636,11 +668,14 @@ context [
 		unless parse eval-draw pattern [
 		    any [ here:
 			  line 
+			| spline
 			| polygon
 			| triangle
 			| box
 			| line-width
 			| line-pattern
+			| line-join
+			| line-cap
 			| fill-pen
 			| pen
 			| clip
@@ -658,6 +693,8 @@ context [
 			| push
 			| text
 			| font
+			| line-join
+			| line-cap
 			| skip
 		    ]
 		] [
