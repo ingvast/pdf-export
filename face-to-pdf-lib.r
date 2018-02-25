@@ -311,21 +311,17 @@ context [
 	f  [object!]  {The face from what to calculate original colours, and size}
 	/noregister {Set this to only return a stream, do not register with name}
 	/size sz
-	/local p s color strea patterns fy-py 
+	/local p s color strea patterns 
 	    render-mode  fnt 
     ][
 	warning: func [ s ][ print [ "Warning!" s ] ]
-
-	fy-py: func [ y ][  y ]
-
-	fp-pp: func [ p ][ p ]
 
 	strea: copy [ ]
 	patterns: context [
 	    ; locals 
 	    p: p1: p2: radius: string: pair: none
 	    matrix: none
-	    current-pen:
+	    current-pen: none
 	    current-fill: none
 	    current-line-width: none
 	    current-line-pattern: none
@@ -342,19 +338,19 @@ context [
 	    ]
 	    ; Patterns
 	    line: [
-		'line opt [ set p pair! ( repend strea [ p/x fy-py p/y 'm ] ) ]
-		      any [ set p pair! ( repend strea [ p/x fy-py p/y 'l ] )]
+		'line opt [ set p pair! ( repend strea [ p/x p/y 'm ] ) ]
+		      any [ set p pair! ( repend strea [ p/x p/y 'l ] )]
 		(append strea 'S) 
 	    ]
 	    spline: [
-		'spline integer! opt [ set p pair! ( repend strea [ p/x fy-py p/y 'm ] ) ]
-		      any [ set p pair! ( repend strea [ p/x fy-py p/y 'l ] )]
+		'spline integer! opt [ set p pair! ( repend strea [ p/x p/y 'm ] ) ]
+		      any [ set p pair! ( repend strea [ p/x p/y 'l ] )]
 		(append strea 'S) 
 	    ]
 	    box: [
 		'box set p1 pair! set p2 pair!
 		    opt [ set p number! ( warning "Box corner radius is ignored" )]
-		    ( repend strea [ fp-pp p1 p2 - p1 're stroke-aor-fill ] )
+		    ( repend strea [ p1 p2 - p1 're stroke-aor-fill ] )
 	    ]
 	    use [ str p colors ][
 		triangle: [
@@ -391,8 +387,8 @@ context [
 	    ]
 	    
 	    polygon: [
-		'polygon opt [ set p pair! ( repend strea [ p/x fy-py p/y 'm ] ) ]
-			 any [ set p pair! ( repend strea [ p/x fy-py p/y 'l ] )]
+		'polygon opt [ set p pair! ( repend strea [ p/x p/y 'm ] ) ]
+			 any [ set p pair! ( repend strea [ p/x p/y 'l ] )]
 		    (append strea 'h append strea stroke-aor-fill)
 	    ]
 	    circle: [
@@ -401,7 +397,7 @@ context [
 			| set radius pair! ( radius: reduce[ radius/x radius/y ] )
 		    ]
 		    (
-			append strea draw-commands/circle/xy p/x fy-py p/y radius/1 radius/2
+			append strea draw-commands/circle/xy p/x p/y radius/1 radius/2
 			append strea stroke-aor-fill
 		    )
 	    ]
@@ -509,7 +505,7 @@ context [
 		    repend strea [
 			register-font current-font current-font/size 'Tf
 			render-mode 'Tr
-			pair/x fy-py pair/y 
+			pair/x pair/y 
 			'Td
 			string 'Tj
 		    ]
@@ -763,11 +759,9 @@ context [
     parse-face: func [
 	face [object!]
 	/local strea offset n  x y pos edge pane line-info
-	    reference fy-py p save-current-font
+	    reference p save-current-font
     ][
 	strea: copy []
-
-	fy-py: func [ y ][ y ]
 
 	repend strea [ 0x0 face/size 're 'W 'n ] ; Set clipping
 	
