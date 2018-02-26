@@ -133,7 +133,7 @@ context [
 		x - rx y     'c 'h
 	    ]
 	]
-	arc: func [ p R angle1 angle-span  paint-command
+	arc: func [ p R angle1 angle-span
 		    /closed
 		    /local
 		    result
@@ -167,7 +167,6 @@ context [
 		angle: angle-next
 	    ]
 	    if closed [ append result 'h ] 
-	    if paint-command [ repend result paint-command ]
 	    result
 	]
 
@@ -319,7 +318,7 @@ context [
 	strea: copy [ ]
 	patterns: context [
 	    ; locals 
-	    p: p1: p2: radius: string: pair: none
+	    p: po: p1: p2: radius: string: pair: none
 	    matrix: none
 	    cmds: none
 
@@ -331,25 +330,19 @@ context [
 	    current-line-join: 0
 	    current-miter-limit: none
 
-	    ; local functions
-	    stroke-aor-fill: does [
-		either not empty? current-pen
-		    [ either current-fill ['B] ['S ] ]
-		    [ either current-fill [ 'f] [ 'n ] ]
-	    ]
-
 	    path: copy []
 	    clear-path: does [ path: copy [] ]
 	    add-path: func [ p ] [ append path p ]
 
 	    paint-path: func [
+		/no-fill
 		/local
 		    pattern-count
 		    pattern-length
 		    offset
 		    pattern
 	    ][
-		if  current-fill [
+		if  all[ current-fill not no-fill ] [
 		    ; fill it
 		    append strea path
 		    append strea 'f
@@ -378,16 +371,16 @@ context [
 
 			repeat i pattern-count [
 			    strip: pick current-line-pattern i
-			    if pick current-pen i [
-				repend strea  [ pick current-pen i 'RG ]
+			    if color: pick current-pen i [
+				repend strea  [ color 'RG ]
 				pattern: reduce [
 				    strip pattern-length - strip
 				]
 				repend strea [ pattern offset 'd ]
-				offset: offset - strip
+				append strea path
+				append strea 'S
 			    ]
-			    append strea path
-			    append strea 'S
+			    offset: offset - strip
 			]
 		    ]
 		]
@@ -396,19 +389,19 @@ context [
 	    ; Patterns
 	    line: [
 		'line 
-		      opt [ set p pair! ( add-path reduce [ p/x p/y 'm ] ) ]
-		      any [ set p pair! ( add-path reduce [ p/x p/y 'l ] )]
-		(? path paint-path) 
+		      opt [ set po pair! ]
+		      any [ set p pair! ( add-path reduce [ po/x po/y 'm p/x p/y 'l ] po: p )]
+		(paint-path/no-fill) 
 	    ]
 	    spline: [
-		'spline integer! opt [ set p pair! ( repend strea [ p/x p/y 'm ] ) ]
-		      any [ set p pair! ( repend strea [ p/x p/y 'l ] )]
-		(append strea 'S) 
+		'spline integer! opt [ set p pair! ( add-path reduce [ p/x p/y 'm ] ) ]
+		      any [ set p pair! ( add-path reduce [ p/x p/y 'l ] )]
+		(paint-path/no-fill) 
 	    ]
 	    box: [
 		'box set p1 pair! set p2 pair!
 		    opt [ set p number! ( warning "Box corner radius is ignored" )]
-		    ( repend strea [ p1 p2 - p1 're stroke-aor-fill ] )
+		    ( add-path reduce [ p1 p2 - p1 're ] paint-path)
 	    ]
 	    use [ str p colors ][
 		triangle: [
@@ -428,12 +421,13 @@ context [
 			]
 			if not empty? current-pen [
 			    set-current-env
-			    repend strea [
+			    add-path reduce [
 				p/1 'm
 				p/2 'l
 				p/3 'l
-				'h 's 
+				'h 
 			    ]
+			    paint-path/no-fill
 			]
 		    )
 		]
@@ -445,9 +439,9 @@ context [
 	    ]
 	    
 	    polygon: [
-		'polygon opt [ set p pair! ( repend strea [ p/x p/y 'm ] ) ]
-			 any [ set p pair! ( repend strea [ p/x p/y 'l ] )]
-		    (append strea 'h append strea stroke-aor-fill)
+		'polygon opt [ set p pair! ( add-path reduce [ p/x p/y 'm ] ) ]
+			 any [ set p pair! ( add-path reduce [ p/x p/y 'l ] )]
+		    (add-path 'h paint-path)
 	    ]
 	    circle: [
 		[ 'circle | 'ellipse ] set p pair!
@@ -455,8 +449,8 @@ context [
 			| set radius pair! ( radius: reduce[ radius/x radius/y ] )
 		    ]
 		    (
-			append strea draw-commands/circle/xy p/x p/y radius/1 radius/2
-			append strea stroke-aor-fill
+			add-path draw-commands/circle/xy p/x p/y radius/1 radius/2
+			paint-path
 		    )
 	    ]
 	    arc: [ 'arc ( points: copy [] angles: copy [] arg: none)
@@ -466,16 +460,15 @@ context [
 		    ]
 		    (
 			either arg [
-			    append strea draw-commands/arc/closed
+			    add-path draw-commands/arc/closed
 				    first points last points
 				    first angles last angles 
-				    stroke-aor-fill
 			] [
-			    append strea draw-commands/arc
+			    add-path draw-commands/arc
 				    first points last points
 				    first angles last angles
-				    stroke-aor-fill
 			]
+			paint-path
 		    )
 	    ]
 	    curve: [ 'curve
@@ -484,11 +477,11 @@ context [
 		    | copy p 3 pair! ( insert at p 2 p/2)
 		]
 		( 
-		    repend strea [
+		    add-path reduce [
 			p/1 'm
 			p/2 p/3 p/4 'c
-			stroke-aor-fill
 		    ]
+		    paint-path
 		)
 	    ]
 	    translate: [
@@ -557,7 +550,7 @@ context [
 			1 0 0 -1 0 2 * pair/2 + current-font/size 'cm
 		    ]
 		
-		    either all [ not empty? current-pen render-mode = 0 ]
+		    either all [ not empty? current-pen current-pen/1 render-mode = 0 ]
 			[ repend strea [ current-pen/1  'rg ] ]
 			[ set-current-env ]
 		    repend strea [
@@ -664,7 +657,11 @@ context [
 		'line-width set p number! ( current-line-width: p repend strea [ p 'w ] )
 	    ]
 	    line-pattern: [ 
-		'line-pattern  copy current-line-pattern [ none! | any number! ]
+		'line-pattern  copy current-line-pattern any [ none! | number! ]
+		(unless any current-line-pattern [
+		    current-line-pattern: copy []
+		    append strea [ [] 0 d ]
+		    ] )
 	    ]
 	    fill-pen:  [
 		'fill-pen [
@@ -678,11 +675,12 @@ context [
 	    ]
 	    pen:  [
 		'pen [
-		    copy color some tuple! (
+		    copy color some [ tuple! | none! ]
+		    (
+			if all [ 1 = length? color not color/1 ] [ color: copy [] ]
 			current-pen: color
-			repend strea [ current-pen/1 'RG ]
+			if all[ not empty? current-pen  current-pen/1 ] [ repend strea [ current-pen/1 'RG ] ]
 		    ) 
-		    | none! ( clear current-pen  )
 		]
 	    ]
 	    line-join: [
@@ -705,7 +703,7 @@ context [
 		( repend strea [ current-line-cap 'J] )
 	    ]
 	    set-current-env: does [
-		if not empty? current-pen  [ repend strea [ current-pen/1 'RG ] ]
+		if all[ not empty? current-pen current-pen/1 ]  [ repend strea [ current-pen/1 'RG ] ]
 		if current-fill [ repend strea [ current-fill 'rg ] ]
 		if current-miter-limit [ repend strea [ current-miter-limit 'M ] ]
 		repend strea [
@@ -759,6 +757,7 @@ context [
 
 	patterns/current-line-width: 1
 	patterns/current-pen: reduce [ any [ f/color white ] ]
+	patterns/current-line-pattern: copy []
 
 	patterns/eval-patterns cmd
 	

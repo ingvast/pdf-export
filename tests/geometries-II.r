@@ -137,10 +137,20 @@ dr14: [
 dr15: [
     pen none fill-pen black
     font fnt text vectorial "Line patterns"
-    line-pattern 10  20 5 ; 20   with next argument it coredumps
+    line-pattern 10  20  ; 20   with next argument it coredumps
     pen blue  green
-    line 10x20 140x20
+    line 10x20 140x20 140x30
     spline 1 10x30 140x30
+    fill-pen snow
+    pen red blue
+    box 10x40 140x50
+    line-pattern none
+    line-join round 
+    pen black 
+    polygon 10x60 70x90 70x60 60x70
+    line-pattern 5 10
+    pen none brown
+    circle 110x80 25
 ]
 
 dr: [
