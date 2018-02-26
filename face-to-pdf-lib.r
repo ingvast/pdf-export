@@ -321,26 +321,84 @@ context [
 	    ; locals 
 	    p: p1: p2: radius: string: pair: none
 	    matrix: none
-	    current-pen: none
+	    cmds: none
+
+	    current-pen: copy []
 	    current-fill: none
 	    current-line-width: none
-	    current-line-pattern: none
+	    current-line-pattern: copy []
 	    current-line-cap: 0
 	    current-line-join: 0
 	    current-miter-limit: none
-	    cmds: none
 
 	    ; local functions
 	    stroke-aor-fill: does [
-		either current-pen
+		either not empty? current-pen
 		    [ either current-fill ['B] ['S ] ]
 		    [ either current-fill [ 'f] [ 'n ] ]
 	    ]
+
+	    path: copy []
+	    clear-path: does [ path: copy [] ]
+	    add-path: func [ p ] [ append path p ]
+
+	    paint-path: func [
+		/local
+		    pattern-count
+		    pattern-length
+		    offset
+		    pattern
+	    ][
+		if  current-fill [
+		    ; fill it
+		    append strea path
+		    append strea 'f
+		]
+		if not empty? current-pen [
+		    ; loop thru the stroke colors
+		    pattern-count: min length? current-line-pattern length? current-pen
+		    either pattern-count < 2 [
+			append strea path
+			append strea 'S
+		    ] [
+			; draw with pattern
+
+			;3 6 8
+			;***-------++++++++
+			;***               ***		 [3 14] 0
+			;   -------           ------	 [6 11] -3
+			;          ++++++++         ++++++++ [8 9 ] -9
+		       ; 
+			pattern-length: 0
+			 repeat i pattern-count [
+			    pattern-length: pattern-length + pick current-line-pattern i 
+			]
+
+			offset: pattern-length
+
+			repeat i pattern-count [
+			    strip: pick current-line-pattern i
+			    if pick current-pen i [
+				repend strea  [ pick current-pen i 'RG ]
+				pattern: reduce [
+				    strip pattern-length - strip
+				]
+				repend strea [ pattern offset 'd ]
+				offset: offset - strip
+			    ]
+			    append strea path
+			    append strea 'S
+			]
+		    ]
+		]
+		clear-path
+	    ]
 	    ; Patterns
 	    line: [
-		'line opt [ set p pair! ( repend strea [ p/x p/y 'm ] ) ]
-		      any [ set p pair! ( repend strea [ p/x p/y 'l ] )]
-		(append strea 'S) 
+		'line 
+		      opt [ set p pair! ( add-path reduce [ p/x p/y 'm ] ) ]
+		      any [ set p pair! ( add-path reduce [ p/x p/y 'l ] )]
+		(? path paint-path) 
 	    ]
 	    spline: [
 		'spline integer! opt [ set p pair! ( repend strea [ p/x p/y 'm ] ) ]
@@ -368,7 +426,7 @@ context [
 			append strea compose [
 			    (to-refinement name ) sh
 			]
-			if current-pen [
+			if not empty? current-pen [
 			    set-current-env
 			    repend strea [
 				p/1 'm
@@ -484,10 +542,10 @@ context [
 		(
 		    if render-mode = 'vectorial [
 			render-mode:    case [
-			    all [current-pen current-fill ][ 2 ]
-			    all [ not current-pen current-fill ] [ 0 ]
-			    all [ current-pen not current-fill ] [ 1 ]
-			    all [ not current-pen  not current-fill ] [ 3 ]
+			    all [not empty? current-pen current-fill ][ 2 ]
+			    all [ empty?  current-pen current-fill ] [ 0 ]
+			    all [ not empty? current-pen not current-fill ] [ 1 ]
+			    all [ empty?  current-pen  not current-fill ] [ 3 ]
 			]
 		    ][
 			render-mode: 0
@@ -499,8 +557,8 @@ context [
 			1 0 0 -1 0 2 * pair/2 + current-font/size 'cm
 		    ]
 		
-		    either all [ current-pen render-mode = 0 ]
-			[ repend strea [ current-pen  'rg ] ]
+		    either all [ not empty? current-pen render-mode = 0 ]
+			[ repend strea [ current-pen/1  'rg ] ]
 			[ set-current-env ]
 		    repend strea [
 			register-font current-font current-font/size 'Tf
@@ -620,11 +678,11 @@ context [
 	    ]
 	    pen:  [
 		'pen [
-		    set color tuple! (
+		    copy color some tuple! (
 			current-pen: color
-			repend strea [ current-pen 'RG ]
+			repend strea [ current-pen/1 'RG ]
 		    ) 
-		    | none! ( current-pen: none )
+		    | none! ( clear current-pen  )
 		]
 	    ]
 	    line-join: [
@@ -647,7 +705,7 @@ context [
 		( repend strea [ current-line-cap 'J] )
 	    ]
 	    set-current-env: does [
-		if current-pen  [ repend strea [ current-pen 'RG ] ]
+		if not empty? current-pen  [ repend strea [ current-pen/1 'RG ] ]
 		if current-fill [ repend strea [ current-fill 'rg ] ]
 		if current-miter-limit [ repend strea [ current-miter-limit 'M ] ]
 		repend strea [
@@ -700,7 +758,7 @@ context [
 	]
 
 	patterns/current-line-width: 1
-	patterns/current-pen: any [ f/color white ]
+	patterns/current-pen: reduce [ any [ f/color white ] ]
 
 	patterns/eval-patterns cmd
 	

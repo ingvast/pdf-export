@@ -134,6 +134,14 @@ dr14: [
     spline 1 50x140 75x20 100x140
 ]
     
+dr15: [
+    pen none fill-pen black
+    font fnt text vectorial "Line patterns"
+    line-pattern 10  20 5 ; 20   with next argument it coredumps
+    pen blue  green
+    line 10x20 140x20
+    spline 1 10x30 140x30
+]
 
 dr: [
     push [ 
@@ -158,6 +166,7 @@ dr: [
     push[
 	push dr13 translate 150x0
 	push dr14 translate 150x0
+	push dr15 translate 150x0
     ]
 ]
 
