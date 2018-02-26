@@ -118,19 +118,19 @@ context [
 	    dx: rx * 4 * ( ( square-root 2 ) - 1 ) / 3 
 	    dy: ry * 4 * ( ( square-root 2 ) - 1 ) / 3 
 	    reduce [
-		x - rx y     'm 
-		x - rx y + dy
-		x - dx y + ry
-		x      y + ry 'c
-		x + dx y + ry
+		x + rx y     'm 
 		x + rx y + dy
-		x + rx y     'c
-		x + rx y - dy
-		x + dx y - ry
-		x      y - ry 'c
-		x - dx y - ry
+		x + dx y + ry
+		x      y + ry 'c
+		x - dx y + ry
+		x - rx y + dy
+		x - rx y     'c
 		x - rx y - dy
-		x - rx y     'c 'h
+		x - dx y - ry
+		x      y - ry 'c
+		x + dx y - ry
+		x + rx y - dy
+		x + rx y     'c 'h
 	    ]
 	]
 	arc: func [ p R angle1 angle-span
