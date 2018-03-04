@@ -756,7 +756,7 @@ context [
 	]
 
 	patterns/current-line-width: 1
-	patterns/current-pen: reduce [ any [ f/color white ] ]
+	patterns/current-pen: reduce [ any [ all[ f/color inverse-color f/color ] black ] ]
 	patterns/current-line-pattern: copy []
 
 	patterns/eval-patterns cmd
@@ -772,6 +772,10 @@ context [
 	    ]
 	]
 	strea
+    ]
+
+    inverse-color: func [ color [tuple!] ][
+	255.255.255 - color
     ]
 
 

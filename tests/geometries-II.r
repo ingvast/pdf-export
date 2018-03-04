@@ -14,6 +14,7 @@ dr2: [ font fnt text 0x0 vectorial "Arc-open"
 	line 70x45 80x45 line 75x40 75x50 ]
 dr3: [ font fnt text 0x0 vectorial "Arc-closed" arc 75x45 100x100 30 100  closed line 70x45 80x45 line 75x40 75x50 ]
 dr4: [ font fnt text 0x0 vectorial "Arc-open"
+	pen coal
 	arc 75x75 100x100 122 300
 	fill-pen crimson line-width 1
 	line 70x75 80x75 line 75x70 75x80 ]
@@ -153,46 +154,45 @@ dr15: [
     circle 110x80 25
 ]
 
-dr: [
-    push [ 
-	pen black fill-pen none line-width 1 
-	push dr1 translate 150x0 
-	push dr2 translate 150x0 
-	push dr3 translate 150x0 
-	push dr4 translate 150x0 
-	push dr5 translate 150x0
-	push dr6 translate 150x0 
-    ]
-    translate 0x150
-    push[
-	push dr7 translate 150x0 
-	push dr8 translate 150x0
-	push dr9 translate 150x0
-	push dr10 translate 150x0
-	push dr11 translate 150x0
-	;push dr12 translate 150x0
-    ]
-    translate 0x150
-    push[
-	push dr13 translate 150x0
-	push dr14 translate 150x0
-	push dr15 translate 150x0
-    ]
+
+drs: copy []  repeat i 15 [ append drs to-word rejoin [ "dr" i ]]
+
+replace drs 'dr12 []
+
+
+view-it: func [ drs
+    /local
+	cols dr idr 
+] [
+    cols: 6
+    dr: copy []
+    forall drs [
+	idr: copy []
+	repeat i cols [
+	    unless drs/:i [ break ]
+	    repend idr [
+		'push drs/:i 'translate 150x0
+	    ]
+	]
+	append dr 'push
+	append/only dr idr
+	append dr [
+	    translate 0x150 
+	]
+
+	drs: skip drs cols - 1
+    ] 
+    view/new/offset layout [ text "test av geometrier"
+	f: box yellow / 1.5 900x450 effect [
+	    draw dr
+	    grid 150x150 0x0 2 3 black
+	]
+	key #"q" [quit]
+    ] 0x0
+
 ]
 
-;dr: [ pen black box 5x10 200x100 scale 0.9 1.1 line 5x10 200x100 ]
-
-
-view/new/offset layout [ text "test av geometrier"
-    f: box yellow * 1.5 900x450 effect [
-	draw dr
-	grid 150x150 0x0 2 3 black
-    ]
-    key #"q" [quit]
-] 0x0
-
+view-it drs
 write %geometries-II.pdf lib/face-to-pdf f
-
-
 wait none
 
