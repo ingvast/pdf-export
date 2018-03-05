@@ -5,6 +5,10 @@ lib: do %../face-to-pdf-lib.r
 
 fnt: make face/font [ name: "/usr/share/fonts/gnu-free/FreeSans.ttf" ]
 
+tt: func [ d ][
+    view layout [ box sky 500x350 effect[ draw[ push d ]] key #"q" [unview]]
+]
+
 
 dr1: [ font fnt text 0x0 vectorial "Circle" circle 75x75 50  ]
 dr2: [ font fnt text 0x0 vectorial "Arc-open"
@@ -26,12 +30,17 @@ dr6: [
     line-width 2
     arrow 1x2
     line 10x20 130x20
+    line-width 4
     arrow 1x1
     line 10x30 130x30
     arrow 2x2
     line 10x40 130x40
     circle 75x70 50 30
     ellipse 75x70 50x30
+    arrow 1x1
+    spline 15 10x90 30x110 75x110 90x120 140x80
+    pen green
+    curve 10x140 30x100 110x150 140x120
     arrow 0x0
 ]
 dr7: [

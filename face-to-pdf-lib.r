@@ -51,7 +51,7 @@ REBOL [
 ]
 
 context [
-
+    
     export: func [
 	{Exports any variable you give as argumment from this lib to your context}
 	adds [word! block! unset!]
@@ -68,8 +68,27 @@ context [
 
 
     ; Utility functions
-    Z: func [ msg con][ print rejoin [ msg ": " mold con ] con]
+    Z: func [ msg con ][ print rejoin [ msg ": " mold con ] con]
 
+    arctan2: func [ y x ][
+	case [
+	    y < 0 [
+		negate arctan2 negate y x
+	    ]
+	    x < 0 [
+		180 - arctan2 y negate x
+	    ]
+	    x = 0 [
+		90
+	    ]
+	    y < x [
+		arctangent y / x
+	    ]
+	    true [
+		90 - arctangent x / y
+	    ]
+	]
+    ]
 
     rebol-draw-commands: [
 	pen fill-pen 
@@ -329,6 +348,7 @@ context [
 	    current-line-cap: 0
 	    current-line-join: 0
 	    current-miter-limit: none
+	    current-arrow: 0x0
 
 	    path: copy []
 	    clear-path: does [ path: copy [] ]
@@ -386,12 +406,110 @@ context [
 		]
 		clear-path
 	    ]
+	    draw-forward-arrow: func [
+		point [pair!] {where it hits}
+		direction [number!] {Direction of pointing}
+		thickness [number!] {Thickness of line, also gives size of arrow}
+		color	[tuple!] {Color of the line}
+		/local arrow
+		    r thickness-relation half-point-angle
+	    ][
+		
+		half-point-angle: 15
+		ca: cosine direction
+		sa: sine direction
+		thickness-relation: 10 ; Relation between line thickness and arrow size
+		r: thickness-relation ;thickness * thickness-relation
+		arrow: reduce [ 
+			r * negate cosine half-point-angle
+			r * sine half-point-angle
+		]
+		append strea probe reduce [
+		    'q ca  sa negate sa ca point 'cm ; Translate and rotate
+		    color 'rg
+		    color 'RG
+		    thickness 'w
+		    0x0 'm 
+		    arrow/1 arrow/2 'l
+		    negate r * 0.75 0 'l
+		    arrow/1 negate arrow/2 'l
+		    'h 'B 'Q
+		]
+	    ]
+	    draw-backward-arrow: func [
+		point [pair!] {where it hits}
+		direction [number!] {Direction of pointing}
+		thickness [number!] {Thickness of line, also gives size of arrow}
+		color	[tuple!] {Color of the line}
+		/local arrow
+		    r thickness-relation half-point-angle
+	    ][
+		
+		half-point-angle: 40
+		ca: cosine direction + 180
+		sa: sine direction + 180
+		thickness-relation: 10 ; Relation between line thickness and arrow size
+		r: thickness-relation ;thickness * thickness-relation
+		arrow: reduce [ 
+			r * negate cosine half-point-angle
+			r * sine half-point-angle
+		]
+		append strea probe reduce [
+		    'q ca  sa negate sa ca point 'cm ; Translate and rotate
+		    color 'rg
+		    thickness 'w
+		    arrow/1 arrow/2 'm
+		    0x0 'l 
+		    arrow/1 negate arrow/2 'l
+		    'S 'Q
+		]
+	    ]
+	    draw-arrows: func [ 
+		types [pair!] {What kind of arrows}
+		ctrl-points [ block! ] { Four control points as if a beizier spline}
+		thickness [number!] {Line thickness}
+		color [tuple!] {Colors of arrow}
+		/local dir1 dir2 angle1 angle2
+	    ][
+		dir1: ctrl-points/1 - ctrl-points/2 
+		angle1: arctan2 dir1/y dir1/x
+
+		dir2: ctrl-points/4 - ctrl-points/3 
+		angle2: arctan2 dir2/y dir2/x
+
+		switch second types [
+		    1 [ draw-forward-arrow ctrl-points/1 angle1 thickness color ]
+		    2 [ draw-backward-arrow ctrl-points/1 angle1 thickness color ]
+		]
+		switch first types [
+		    1 [ draw-forward-arrow ctrl-points/4 angle2 thickness color ]
+		    2 [ draw-backward-arrow ctrl-points/4 angle2 thickness color ]
+		]
+	    ]
+
 	    ; Patterns
 	    line: [
-		'line 
-		      opt [ set po pair! ]
-		      any [ set p pair! ( add-path reduce [ po/x po/y 'm p/x p/y 'l ] po: p )]
-		(paint-path/no-fill) 
+		'line  ( pth: copy [] )
+		      [ set po pair! (append pth po) ] 
+		      any [ set p pair!
+			    (
+				add-path reduce [ po/x po/y 'm p/x p/y 'l ]
+				po: p
+				append pth po
+			    )]
+		(
+		    paint-path/no-fill
+		    unless any [ current-arrow = 0x0 empty? current-pen ] [
+			use [ len ][
+			    len: length? pth
+			    if len > 1 [
+				pth: reduce [ pth/1 pth/2 pth/(len - 1) last pth ]
+				? pth 
+				draw-arrows ?? current-arrow pth current-line-width current-pen/1
+			    ]
+			]
+		    ]
+		) 
 	    ]
 	    spline: [
 		'spline integer! opt [ set p pair! ( add-path reduce [ p/x p/y 'm ] ) ]
@@ -702,6 +820,9 @@ context [
 		]
 		( repend strea [ current-line-cap 'J] )
 	    ]
+	    arrow: [ 'arrow
+		set current-arrow pair! ( print current-arrow )
+	    ]
 	    set-current-env: does [
 		if all[ not empty? current-pen current-pen/1 ]  [ repend strea [ current-pen/1 'RG ] ]
 		if current-fill [ repend strea [ current-fill 'rg ] ]
@@ -730,6 +851,7 @@ context [
 			| line-cap
 			| fill-pen
 			| pen
+			| arrow
 			| clip
 			| circle
 			| arc
