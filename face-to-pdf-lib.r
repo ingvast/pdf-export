@@ -514,7 +514,7 @@ context [
 	    spline: [
 		'spline integer! opt [ set p pair! ( add-path reduce [ p/x p/y 'm ] ) ]
 		      any [ set p pair! ( add-path reduce [ p/x p/y 'l ] )]
-		(paint-path/no-fill) 
+		(paint-path) 
 	    ]
 	    box: [
 		'box set p1 pair! set p2 pair!
