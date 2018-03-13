@@ -33,14 +33,11 @@ dr6: [
     line-width 4
     arrow 1x1
     line 10x30 130x30
-    arrow 2x2
+    arrow 1x1
     line 10x40 130x40
     circle 75x70 50 30
     ellipse 75x70 50x30
-    arrow 1x1
-    spline 15 10x90 30x110 75x110 90x120 140x80
-    pen green
-    curve 10x140 30x100 110x150 140x120
+    arc  75x70 25x15 100 200
     arrow 0x0
 ]
 dr7: [
@@ -162,9 +159,19 @@ dr15: [
     pen none brown
     circle 110x80 25
 ]
+dr16: [
+    pen none fill-pen black line-pattern none
+    font fnt text vectorial "More arrows"
+    pen aqua
+    arrow 1x1
+    spline 15 10x90 30x110 75x110 90x120 140x80
+    pen green
+    curve 10x140 30x100 110x150 140x120
+    arrow 0x0
+]
 
 
-drs: copy []  repeat i 15 [ append drs to-word rejoin [ "dr" i ]]
+drs: copy []  repeat i 16 [ append drs to-word rejoin [ "dr" i ]]
 
 replace drs 'dr12 []
 

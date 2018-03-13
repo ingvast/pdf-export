@@ -164,13 +164,14 @@ context [
 		    p3x p3y 
 		    p4x p4y 
 	][
-	    result: copy [ ]
+	    result: copy/deep [ ps [] arrows [] ]
 	    parts: round/ceiling angle-span / 90
 	    part-angle: angle-span / parts
 	    d:  4 / 3 * tangent part-angle / 4
-	    if  closed [ repend result [ p 'm ] ]
-	    repend result [ p/x + (R/x * cosine angle1) p/y + (R/y * sine angle1) ]
-	    repend result either closed [ 'l ][ 'm] 
+	    if  closed [ repend result/ps [ p 'm ] ]
+	    repend result/ps [ p/x + (R/x * cosine angle1) p/y + (R/y * sine angle1) ]
+	    append result/arrows to-pair reduce [ p/x + (R/x * cosine angle1) p/y + (R/y * sine angle1) ]
+	    repend result/ps either closed [ 'l ][ 'm] 
 	    angle: angle1
 	    repeat i parts [
 		angle-next: angle + part-angle
@@ -178,15 +179,18 @@ context [
 		p4x: p/x + (R/x * cosine angle-next)	p4y: p/y + (R/y * sine angle-next)
 		p2x: p1x - (R/x * d * sine angle)	p2y: p1y + (R/y * d * cosine angle )
 		p3x: p4x + (R/x * d * sine angle-next)	p3y: p4y - (R/y * d * cosine angle-next)
-		repend result [
+		repend result/ps [
 		    p2x p2y 
 		    p3x p3y 
 		    p4x p4y 'c
 		]
 		angle: angle-next
 	    ]
-	    if closed [ append result 'h ] 
-	    result
+	    append result/arrows to-pair copy/part skip tail result/ps -7 2
+	    append result/arrows to-pair copy/part skip tail result/ps -5 2
+	    append result/arrows to-pair copy/part skip tail result/ps -3 2
+	    if closed [ append result/ps 'h ] 
+	    ?? result
 	]
 
 	matrix: func [
@@ -424,11 +428,12 @@ context [
 			r * negate cosine half-point-angle
 			r * sine half-point-angle
 		]
-		append strea probe reduce [
+		append strea reduce [
 		    'q ca  sa negate sa ca point 'cm ; Translate and rotate
 		    color 'rg
 		    color 'RG
 		    thickness 'w
+		    0 'j 30 'M
 		    0x0 'm 
 		    arrow/1 arrow/2 'l
 		    negate r * 0.75 0 'l
@@ -454,10 +459,11 @@ context [
 			r * negate cosine half-point-angle
 			r * sine half-point-angle
 		]
-		append strea probe reduce [
+		append strea reduce [
 		    'q ca  sa negate sa ca point 'cm ; Translate and rotate
 		    color 'rg
 		    thickness 'w
+		    0 'j 30 'M
 		    arrow/1 arrow/2 'm
 		    0x0 'l 
 		    arrow/1 negate arrow/2 'l
@@ -490,7 +496,7 @@ context [
 	    ; Patterns
 	    line: [
 		'line  ( pth: copy [] )
-		      [ set po pair! (append pth po) ] 
+		      set po pair! (append pth po)
 		      any [ set p pair!
 			    (
 				add-path reduce [ po/x po/y 'm p/x p/y 'l ]
@@ -504,17 +510,30 @@ context [
 			    len: length? pth
 			    if len > 1 [
 				pth: reduce [ pth/1 pth/2 pth/(len - 1) last pth ]
-				? pth 
-				draw-arrows ?? current-arrow pth current-line-width current-pen/1
+				draw-arrows current-arrow pth current-line-width current-pen/1
 			    ]
 			]
 		    ]
 		) 
 	    ]
 	    spline: [
-		'spline integer! opt [ set p pair! ( add-path reduce [ p/x p/y 'm ] ) ]
-		      any [ set p pair! ( add-path reduce [ p/x p/y 'l ] )]
-		(paint-path) 
+		'spline  (pth: copy [] )
+		    integer! 
+		    opt [ set p pair! ( add-path reduce [ p/x p/y 'm ] append pth p ) ]
+		    any [ set p pair! ( add-path reduce [ p/x p/y 'l ] append pth p ) ]
+		    (
+			paint-path
+
+			unless any [ current-arrow = 0x0 empty? current-pen ] [
+			    use [ len ][
+				len: length? pth
+				if len > 1 [
+				    pth: reduce [ pth/1 pth/2 pth/(len - 1) last pth ]
+				    draw-arrows  current-arrow pth current-line-width current-pen/1
+				]
+			    ]
+			]
+		    )
 	    ]
 	    box: [
 		'box set p1 pair! set p2 pair!
@@ -569,6 +588,15 @@ context [
 		    (
 			add-path draw-commands/circle/xy p/x p/y radius/1 radius/2
 			paint-path
+			unless any [ current-arrow = 0x0 empty? current-pen ] [
+			    radius: to-pair radius
+			    draw-arrows  current-arrow 
+				reduce [
+				    radius * 1x0 + p radius        + p 
+				    radius * 1x-1 + p radius * 1x0 + p 
+				]
+				current-line-width current-pen/1
+			]
 		    )
 	    ]
 	    arc: [ 'arc ( points: copy [] angles: copy [] arg: none)
@@ -589,7 +617,7 @@ context [
 			paint-path
 		    )
 	    ]
-	    curve: [ 'curve
+	    curve: [ 'curve (pth: copy [])
 		[
 		    copy p 4 pair!
 		    | copy p 3 pair! ( insert at p 2 p/2)
@@ -600,6 +628,9 @@ context [
 			p/2 p/3 p/4 'c
 		    ]
 		    paint-path
+		    unless any [ current-arrow = 0x0 empty? current-pen ] [
+			draw-arrows  current-arrow p current-line-width current-pen/1
+		    ]
 		)
 	    ]
 	    translate: [
@@ -821,7 +852,7 @@ context [
 		( repend strea [ current-line-cap 'J] )
 	    ]
 	    arrow: [ 'arrow
-		set current-arrow pair! ( print current-arrow )
+		set current-arrow pair! 
 	    ]
 	    set-current-env: does [
 		if all[ not empty? current-pen current-pen/1 ]  [ repend strea [ current-pen/1 'RG ] ]
