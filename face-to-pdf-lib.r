@@ -180,17 +180,19 @@ context [
 		p2x: p1x - (R/x * d * sine angle)	p2y: p1y + (R/y * d * cosine angle )
 		p3x: p4x + (R/x * d * sine angle-next)	p3y: p4y - (R/y * d * cosine angle-next)
 		repend result/ps [
-		    p2x p2y 
-		    p3x p3y 
-		    p4x p4y 'c
+		    as-pair p2x p2y 
+		    as-pair p3x p3y 
+		    as-pair p4x p4y 'c
+		]
+		repend result/arrows [
+		    as-pair p2x p2y 
+		    as-pair p3x p3y 
+		    as-pair p4x p4y 
 		]
 		angle: angle-next
 	    ]
-	    append result/arrows to-pair copy/part skip tail result/ps -7 2
-	    append result/arrows to-pair copy/part skip tail result/ps -5 2
-	    append result/arrows to-pair copy/part skip tail result/ps -3 2
 	    if closed [ append result/ps 'h ] 
-	    ?? result
+	    result
 	]
 
 	matrix: func [
@@ -472,7 +474,7 @@ context [
 	    ]
 	    draw-arrows: func [ 
 		types [pair!] {What kind of arrows}
-		ctrl-points [ block! ] { Four control points as if a beizier spline}
+		ctrl-points [ block! ] { Control points as if a beizier spline, it uses first and last two points}
 		thickness [number!] {Line thickness}
 		color [tuple!] {Colors of arrow}
 		/local dir1 dir2 angle1 angle2
@@ -480,7 +482,7 @@ context [
 		dir1: ctrl-points/1 - ctrl-points/2 
 		angle1: arctan2 dir1/y dir1/x
 
-		dir2: ctrl-points/4 - ctrl-points/3 
+		dir2: (last ctrl-points) - first skip tail ctrl-points -2
 		angle2: arctan2 dir2/y dir2/x
 
 		switch second types [
@@ -488,8 +490,8 @@ context [
 		    2 [ draw-backward-arrow ctrl-points/1 angle1 thickness color ]
 		]
 		switch first types [
-		    1 [ draw-forward-arrow ctrl-points/4 angle2 thickness color ]
-		    2 [ draw-backward-arrow ctrl-points/4 angle2 thickness color ]
+		    1 [ draw-forward-arrow last ctrl-points angle2 thickness color ]
+		    2 [ draw-backward-arrow last ctrl-points angle2 thickness color ]
 		]
 	    ]
 
@@ -509,8 +511,8 @@ context [
 			use [ len ][
 			    len: length? pth
 			    if len > 1 [
-				pth: reduce [ pth/1 pth/2 pth/(len - 1) last pth ]
-				draw-arrows current-arrow pth current-line-width current-pen/1
+				;pth: reduce [ pth/1 pth/2 pth/(len - 1) last pth ]
+				draw-arrows current-arrow pth current-line-width any current-pen
 			    ]
 			]
 		    ]
@@ -528,7 +530,7 @@ context [
 			    use [ len ][
 				len: length? pth
 				if len > 1 [
-				    pth: reduce [ pth/1 pth/2 pth/(len - 1) last pth ]
+				    ;pth: reduce [ pth/1 pth/2 pth/(len - 1) last pth ]
 				    draw-arrows  current-arrow pth current-line-width current-pen/1
 				]
 			    ]
@@ -605,16 +607,20 @@ context [
 			  copy arg 'closed 
 		    ]
 		    (
-			either arg [
-			    add-path draw-commands/arc/closed
+			pth: either arg [
+			    draw-commands/arc/closed
 				    first points last points
 				    first angles last angles 
 			] [
-			    add-path draw-commands/arc
+			    draw-commands/arc
 				    first points last points
 				    first angles last angles
 			]
+			add-path pth/ps
 			paint-path
+			unless any [ current-arrow = 0x0 empty? current-pen ] [
+			    draw-arrows current-arrow pth/arrows current-line-width any current-pen
+			]
 		    )
 	    ]
 	    curve: [ 'curve (pth: copy [])
@@ -629,7 +635,7 @@ context [
 		    ]
 		    paint-path
 		    unless any [ current-arrow = 0x0 empty? current-pen ] [
-			draw-arrows  current-arrow p current-line-width current-pen/1
+			draw-arrows  current-arrow p current-line-width any current-pen
 		    ]
 		)
 	    ]

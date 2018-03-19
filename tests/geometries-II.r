@@ -3,7 +3,8 @@ REBOL [
 
 lib: do %../face-to-pdf-lib.r
 
-fnt: make face/font [ name: "/usr/share/fonts/gnu-free/FreeSans.ttf" ]
+fnt: make face/font [ name: "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf" ]
+/usr/share/fonts/truetype/liberation
 
 tt: func [ d ][
     view layout [ box sky 500x350 effect[ draw[ push d ]] key #"q" [unview]]
