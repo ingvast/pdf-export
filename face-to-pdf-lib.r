@@ -1010,9 +1010,35 @@ context [
 	]
 	if face/image [
 	    reference: to-refinement register-image face/image
+	    case [
+		find face/effect 'fit [
+		    repend strea [
+			'q face/size/x 0 0 negate face/size/y 0 face/size/y 'cm 
+		    ]
+		]
+		find face/effect 'aspect [
+		    use [ x-scale y-scale scale ][
+			;for full fit scale in x-direction
+			x-scale: face/size/x / face/image/size/x
+			y-scale: face/size/y / face/image/size/y
+			scale: min x-scale y-scale
+			repend strea [
+			    'q
+			    face/image/size/x * scale 0 0 negate face/image/size/y * scale
+			    0 face/image/size/y * scale 'cm 
+			]
+		    ]
+		    
+		]
+		p: find face/effect 'extend [
+		]
+		true [ ; Scale 1:1
+		    repend strea [
+			'q face/image/size/x 0 0 negate face/image/size/y 0 face/image/size/y 'cm 
+		    ]
+		]
+	    ]
 	    repend strea [
-		; Assume scale 'fit
-		'q face/size/x 0 0 negate face/size/y 0 face/size/y 'cm 
 		reference 'Do
 		'Q
 	    ]
@@ -1101,7 +1127,7 @@ context [
 	    ]
 	    append strea 'ET
 	]
-	if all [ face/edge face/edge/size face/edge/color ][
+	if all [ face/edge pair? face/edge/size face/edge/color ][
 	    use [ edge size nw-color se-color ][
 		edge: 1x1 * face/edge/size size: 1x1 * face/size
 		nw-color: se-color: face/edge/color
