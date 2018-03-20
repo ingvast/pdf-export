@@ -90,6 +90,23 @@ context [
 	]
     ]
 
+    reduce-all-but: func [
+	{Returns a copy of block which is evaluated except the words in names 
+	 which are treated as lited}
+	b [block!] {Block to evaluate}
+	names [block!] {The names not to evaluate}
+	/local 
+	    binding
+    ][
+	binding: copy []
+	foreach x names [
+	    repend binding [ to-set-word x to-lit-word x]
+	]
+	binding: make object! binding
+	reduce bind/copy b binding
+    ]
+	;TODO: test this function next the parse of the effect ...
+
     rebol-draw-commands: [
 	pen fill-pen 
 	line-width
@@ -1006,23 +1023,55 @@ context [
 			all [ face/edge face/edge/size ]
 			0x0
 	    ]
-	    while [p: find p 'draw] [
-		append strea compose [
-		    q
-		    ( draw-commands/translate offset/x offset/y )
-		    (
-			use [ draw-cmds ] [
-			    draw-cmds: p/2
-			    if word? draw-cmds [ draw-cmds: get draw-cmds ]
-			    draw-to-stream/noregister/size
-				'anything draw-cmds
-				face
-				face/size - ( 2x2 * offset )
-			]
+	    parse face/effect [
+		any [
+		    'draw set p skip  (
+			if word? p [ p: get p ]
+			append strea compose [
+			    q
+			    ( draw-commands/translate offset/x offset/y )
+			    (
+				use [ draw-cmds ] [
+				    draw-cmds: p
+				    if word? draw-cmds [ draw-cmds: get draw-cmds ]
+				    draw-to-stream/noregister/size
+					'anything draw-cmds
+					face
+					face/size - ( 2x2 * offset )
+				]
+			    )
+			    Q    
+			]   
 		    )
-		    Q    
+		    |
+		    [ 'grid 
+			set grid-spacing pair!
+			set grid-offset opt pair!
+			set grid-color opt tuple!
+			set grid-thickness opt [ number! | pair! ]
+			(
+			    grid-thickness: 1x1 * any [ grid-thickness 1 ]
+			    repend strea [
+				'q
+				any [ grid-color 0.0.0 ] 'RG
+				grid-thickness/x 'w
+			    ]
+			    for x 1 + any [ grid-offset/x 0] face/size/x grid-spacing/x [
+				repend strea [
+				    x 0 'm x face/size/y 'l
+				]
+			    ]
+			    for y 1 + any [ grid-offset/y 0] face/size/y grid-spacing/y [
+				repend strea [
+				    0 y 'm face/size/x y 'l
+				]
+			    ]
+			    append strea 'S
+			)
+		    ]
+		    |
+		    skip
 		]
-		p: skip p  2
 	    ]
 	]
 	if all [ face/text face/font face/font/color not find system/view/screen-face/pane face ] [
