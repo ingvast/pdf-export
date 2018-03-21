@@ -1008,12 +1008,14 @@ context [
 		0 0 face/size 're 'f
 	    ]
 	]
-	if face/image [
+	if image? face/image [
 	    reference: to-refinement register-image face/image
 	    case [
 		find face/effect 'fit [
 		    repend strea [
 			'q face/size/x 0 0 negate face/size/y 0 face/size/y 'cm 
+			reference 'Do
+			'Q
 		    ]
 		]
 		find face/effect 'aspect [
@@ -1026,21 +1028,109 @@ context [
 			    'q
 			    face/image/size/x * scale 0 0 negate face/image/size/y * scale
 			    0 face/image/size/y * scale 'cm 
+			    reference 'Do
+			    'Q
 			]
 		    ]
 		    
 		]
 		p: find face/effect 'extend [
+		    use[ ] [
+			print "Extend"
+			pos: ext: none
+			parse next p [ set pos pair! set ext pair! ]
+			pos: any [ pos face/image/size / 2 ]
+			ext: any [ ext face/size - face/image/size ] 
+			; Pos says which column and row that is to be expanded
+			; ext is the number of cols and rows to repeat the column at pos
+
+			; Hence we get the areas
+			; uppler-left, upper-right lower-left lower-right horizontal vertical
+			; These are each to become a image of itself and later expanded and put at
+			; the right place.
+			upper-left: to-refinement register-image
+				    copy/part face/image pos
+			upper-right: to-refinement register-image
+				    copy/part at face/image pos * 1x0 + 1x0
+						as-pair face/image/size/x - pos/x - 1 pos/y
+			lower-left: to-refinement register-image
+				    copy/part at face/image pos * 0x1 + 0x1
+						as-pair pos/x face/image/size/y - pos/y - 1
+			lower-right: to-refinement register-image
+				    copy/part at face/image pos + 1x1
+						face/image/size - pos - 1x1
+			upper: to-refinement register-image
+				    copy/part at face/image as-pair pos/x 0
+						as-pair 1 pos/y
+			lower: to-refinement register-image
+				    copy/part at face/image pos + 0x1
+						as-pair 1 face/image/size/y - pos/1 - 1
+			left: to-refinement register-image
+				    copy/part at face/image as-pair 0 pos/y
+						as-pair pos/x - 1 1
+			right: to-refinement register-image
+				    copy/part at face/image pos + 1x0
+						as-pair face/image/size/x - pos/x - 1 1
+			mid: to-refinement register-image
+				    copy/part at face/image pos 1x1
+
+			repend strea [
+			    'q
+				pos/x  0 0 negate pos/y 0 pos/y 'cm 
+				upper-left 'Do
+			    'Q
+			    'q
+				face/image/size/x - pos/x - 1 0 0 negate pos/y
+				face/size/x - face/image/size/x + pos/x pos/y 'cm 
+				upper-right 'Do
+			    'Q
+			    'q
+				pos/x 0 0 negate face/image/size/y - pos/y - 1
+				0 face/size/y 'cm
+				lower-left 'Do
+			    'Q
+			    'q
+				face/image/size/x - pos/x - 1 0 0 negate face/image/size/y - pos/y - 1
+				face/size/x - face/image/size/x + pos/x face/size/y 'cm
+				lower-right 'Do
+			    'Q
+			    'q
+				ext/x 0 0 negate pos/y
+				pos 'cm
+				upper 'Do
+			    'Q
+			    'q
+				ext/x 0 0 negate face/image/size/y - pos/y - 1
+				pos/x face/size/y 'cm
+				lower 'Do
+			    'Q
+			    'q
+				pos/x 0 0 negate ext/y 
+				0 pos/y + ext/y 'cm
+				left 'Do
+			    'Q
+			    'q
+				face/image/size/x - pos/x - 1 0 0 negate ext/y
+				pos/x + ext/x pos/y + ext/y 'cm
+				right 'Do
+			    'Q
+			    'q
+				ext/x 0 0 negate ext/y
+				pos/x pos/y + ext/y 'cm
+				mid 'Do
+			    'Q
+
+			]
+		    ]
+
 		]
 		true [ ; Scale 1:1
 		    repend strea [
 			'q face/image/size/x 0 0 negate face/image/size/y 0 face/image/size/y 'cm 
+			reference 'Do
+			'Q
 		    ]
 		]
-	    ]
-	    repend strea [
-		reference 'Do
-		'Q
 	    ]
 	]
 
