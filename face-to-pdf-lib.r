@@ -325,9 +325,13 @@ context [
 	/local name
     ] [
 	name: create-unique-name image
-	unless find/skip next image-list image 2 [
+	either find/skip image-list name 2 [
+	    dbg: name 
+	][
 	    repend  image-list [name image]
+	    prin ["Added name" name ]
 	]
+	print [ " Handled name " name ]
 	name
     ]
 
@@ -1043,22 +1047,30 @@ context [
 			ext: any [ ext face/size - face/image/size ] 
 			; Pos says which column and row that is to be expanded
 			; ext is the number of cols and rows to repeat the column at pos
+			im1: 0x0 
+			im2: pos
+			im3: face/image/size
+
+			f1: 0x0
+			f2: pos
+			f3: pos + ext
+			f4: im3 + ext
 
 			; Hence we get the areas
 			; uppler-left, upper-right lower-left lower-right horizontal vertical
 			; These are each to become a image of itself and later expanded and put at
 			; the right place.
 			upper-left: to-refinement register-image
-				    copy/part face/image pos
+				    copy/part face/image im2
 			upper-right: to-refinement register-image
-				    copy/part at face/image pos * 1x0 + 1x0
-						as-pair face/image/size/x - pos/x - 1 pos/y
+				    copy/part at face/image as-pair im2/x + 1  0
+						as-pair im3/x - im2/x - 1 im2/y
 			lower-left: to-refinement register-image
-				    copy/part at face/image pos * 0x1 + 0x1
-						as-pair pos/x face/image/size/y - pos/y - 1
+				    copy/part at face/image as-pair 0 im2/y + 1
+						as-pair im2/x    im3/y - im2/y - 1
 			lower-right: to-refinement register-image
-				    copy/part at face/image pos + 1x1
-						face/image/size - pos - 1x1
+				    copy/part at face/image im2 + 1x1
+						im3 - im2 - 1x1
 			upper: to-refinement register-image
 				    copy/part at face/image as-pair pos/x 0
 						as-pair 1 pos/y
@@ -1067,7 +1079,7 @@ context [
 						as-pair 1 face/image/size/y - pos/1 - 1
 			left: to-refinement register-image
 				    copy/part at face/image as-pair 0 pos/y
-						as-pair pos/x - 1 1
+						as-pair pos/x 1
 			right: to-refinement register-image
 				    copy/part at face/image pos + 1x0
 						as-pair face/image/size/x - pos/x - 1 1
@@ -1076,47 +1088,48 @@ context [
 
 			repend strea [
 			    'q
-				pos/x  0 0 negate pos/y 0 pos/y 'cm 
+				f2/x  0 0 negate f2/y
+				0 f2/y 'cm 
 				upper-left 'Do
 			    'Q
 			    'q
-				face/image/size/x - pos/x - 1 0 0 negate pos/y
-				face/size/x - face/image/size/x + pos/x pos/y 'cm 
+				f4/x - f3/x - 1 0 0 negate f3/y - f2/y + 1
+				f3/x + 1  f2/y 'cm
 				upper-right 'Do
 			    'Q
 			    'q
-				pos/x 0 0 negate face/image/size/y - pos/y - 1
-				0 face/size/y 'cm
+				f2/x 0 0 negate f4/y - f3/y - 1
+				0 f4/y 'cm
 				lower-left 'Do
 			    'Q
 			    'q
-				face/image/size/x - pos/x - 1 0 0 negate face/image/size/y - pos/y - 1
-				face/size/x - face/image/size/x + pos/x face/size/y 'cm
+				f4/x - f3/x - 1 0 0 negate f4/y - f3/y - 1
+				f3/x + 1 f4/y 'cm
 				lower-right 'Do
 			    'Q
 			    'q
-				ext/x 0 0 negate pos/y
-				pos 'cm
+				f3/x - f2/x + 1 0 0 negate f2/y
+				f2/x f2/y  'cm
 				upper 'Do
 			    'Q
 			    'q
-				ext/x 0 0 negate face/image/size/y - pos/y - 1
-				pos/x face/size/y 'cm
+				f3/x - f2/x + 1 0 0 negate f4/y - f3/y - 1
+				f2/x f4/y 'cm
 				lower 'Do
 			    'Q
 			    'q
-				pos/x 0 0 negate ext/y 
-				0 pos/y + ext/y 'cm
+				f2/x - f1/x    0 0    negate f3/y - f2/y + 1
+				0 f3/y + 1 'cm
 				left 'Do
 			    'Q
 			    'q
-				face/image/size/x - pos/x - 1 0 0 negate ext/y
-				pos/x + ext/x pos/y + ext/y 'cm
+				f4/x - f3/x - 1 0 0 negate f3/y - f2/y + 1
+				f3/x + 1 f3/y + 1 'cm
 				right 'Do
 			    'Q
 			    'q
-				ext/x 0 0 negate ext/y
-				pos/x pos/y + ext/y 'cm
+				f3/x - f2/x + 1     0 0   negate f3/y - f2/y + 1
+				f2/x f3/y + 1 'cm
 				mid 'Do
 			    'Q
 
