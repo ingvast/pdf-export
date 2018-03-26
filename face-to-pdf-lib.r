@@ -169,8 +169,12 @@ context [
 		x + rx y     'c 'h
 	    ]
 	]
-	arc: func [ p R angle1 angle-span
-		    /closed
+	arc: func [ p [pair!] {Center of arc}
+		    R [number! pair!] {Radius of arc}
+		    angle1	{start angle}
+		    angle-span	{Span angle}
+		    /closed {Use to make pie}
+		    /part {Use to draw line to first point}
 		    /local
 		    result
 		    parts part-angle
@@ -182,13 +186,14 @@ context [
 		    p4x p4y 
 	][
 	    result: copy/deep [ ps [] arrows [] ]
+	    R: R * 1x1
 	    parts: round/ceiling angle-span / 90
 	    part-angle: angle-span / parts
 	    d:  4 / 3 * tangent part-angle / 4
 	    if  closed [ repend result/ps [ p 'm ] ]
 	    repend result/ps [ p/x + (R/x * cosine angle1) p/y + (R/y * sine angle1) ]
 	    append result/arrows to-pair reduce [ p/x + (R/x * cosine angle1) p/y + (R/y * sine angle1) ]
-	    repend result/ps either closed [ 'l ][ 'm] 
+	    repend result/ps either any [ closed part ] [ 'l ][ 'm] 
 	    angle: angle1
 	    repeat i parts [
 		angle-next: angle + part-angle
@@ -329,9 +334,7 @@ context [
 	    dbg: name 
 	][
 	    repend  image-list [name image]
-	    prin ["Added name" name ]
 	]
-	print [ " Handled name " name ]
 	name
     ]
 
@@ -559,9 +562,33 @@ context [
 		    )
 	    ]
 	    box: [
+		'box set p1 pair! set p2 pair! set p number! 
+		    (
+			? p1 ? p2 ? p
+			pth: probe draw-commands/arc
+				    as-pair  p2/x - p  p1/y + p
+				    p -90 90
+			add-path pth/ps
+			pth: probe draw-commands/arc/part
+				    as-pair  p2/x - p  p2/y - p
+				    p 0 90
+			add-path pth/ps
+			pth: probe draw-commands/arc/part
+				    as-pair p1/x + p  p2/y - p
+				    p 90 90
+			add-path pth/ps
+			pth: probe draw-commands/arc/part
+				    as-pair p1/x + p  p1/y + p
+				    p 180 90
+			add-path pth/ps
+			add-path 'h
+			paint-path
+		    )
+		|
 		'box set p1 pair! set p2 pair!
-		    opt [ set p number! ( warning "Box corner radius is ignored" )]
-		    ( add-path reduce [ p1 p2 - p1 're ] paint-path)
+		    (
+			add-path reduce [ p1 p2 - p1 're ] paint-path
+		    )
 	    ]
 	    use [ str p colors ][
 		triangle: [
@@ -1063,8 +1090,9 @@ context [
 
 			x-is: reduce [ 0    	pos/x	 pos/x + 1  face/image/size/x ]
 			y-is: reduce [ 0    	pos/y	 pos/y + 1  face/image/size/x ]
-			x-ps: reduce [ x-is/1 x-is/2   x-is/3 + ext/x    x-is/4 + ext/x ]
-			y-ps: reduce [ y-is/1 y-is/2   y-is/3 + ext/y    y-is/4 + ext/y ]
+
+			x-ps: reduce [ x-is/1   x-is/2   x-is/3 + ext/x    x-is/4 + ext/x ]
+			y-ps: reduce [ y-is/1   y-is/2   y-is/3 + ext/y    y-is/4 + ext/y ]
 
 			x-isize: delta x-is
 			y-isize: delta y-is

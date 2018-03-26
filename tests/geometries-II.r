@@ -170,9 +170,15 @@ dr16: [
     curve 10x140 30x100 110x150 140x120
     arrow 0x0
 ]
+dr17: [
+    pen none fill-pen black line-pattern none
+    font fnt text vectorial "box"
+    fill-pen none pen beige line-width 1
+    box 10x10 100x40 10
+]
 
 
-drs: copy []  repeat i 16 [ append drs to-word rejoin [ "dr" i ]]
+drs: copy []  repeat i 17 [ append drs to-word rejoin [ "dr" i ]]
 
 replace drs 'dr12 []
 
