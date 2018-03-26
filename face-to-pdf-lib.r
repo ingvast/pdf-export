@@ -1039,23 +1039,37 @@ context [
 		    
 		]
 		p: find face/effect 'extend [
-		    use[ ] [
-			print "Extend"
+		    use[
+			pos ext
+			x-is y-is x-ps y-ps
+			x-isize y-isize
+			ref
+			origo size
+			edge-size
+			delta
+		    ] [
 			pos: ext: none
 			parse next p [ set pos pair! set ext pair! ]
 			pos: any [ pos face/image/size / 2 ]
-			ext: any [ ext face/size - face/image/size ] 
+			edge-size: any [ all[ face/edge face/edge/size ] 0x0 ]
+			ext: any [ ext face/size - face/image/size - (2 * edge-size )] 
 			; Pos says which column and row that is to be expanded
 			; ext is the number of cols and rows to repeat the column at pos
 
-			x-is: reduce [ 0	pos/x	    pos/x + 1 ]
-			y-is: reduce [ 0	pos/y	    pos/y + 1 ]
-			x-ps: reduce [ 0	pos/x	    pos/x + ext/x ]
-			y-ps: reduce [ 0	pos/y	    pos/y + ext/y ]
-			x-isize: reduce [ pos/x       1	       face/image/size/x - pos/x - 1 ]
-			y-isize: reduce [ pos/y       1	       face/image/size/y - pos/y - 1 ]
-			x-psize: reduce [ pos/x       ext/x       face/image/size/x - pos/x - 1 ]
-			y-psize: reduce [ pos/y       ext/y       face/image/size/y - pos/y - 1 ]
+			origo: edge-size
+			size: face/size - ( 2 * edge-size )
+
+			delta: func [ x ][ y: copy [] x: next x forall x [ append y (first x) - first back x ] y ]
+
+			x-is: reduce [ 0    	pos/x	 pos/x + 1  face/image/size/x ]
+			y-is: reduce [ 0    	pos/y	 pos/y + 1  face/image/size/x ]
+			x-ps: reduce [ x-is/1 x-is/2   x-is/3 + ext/x    x-is/4 + ext/x ]
+			y-ps: reduce [ y-is/1 y-is/2   y-is/3 + ext/y    y-is/4 + ext/y ]
+
+			x-isize: delta x-is
+			y-isize: delta y-is
+			x-psize: delta x-ps
+			y-psize: delta y-ps
 			
 			repeat i 3 [
 			    repeat j 3 [
@@ -1065,113 +1079,10 @@ context [
 				repend strea [
 				    'q
 					x-psize/:i 0 0 negate y-psize/:j
-					x-ps/:i        y-ps/:j + y-psize/:j 'cm 
+					x-ps/:i + origo/x     y-ps/:j + y-psize/:j + origo/y 'cm 
 					ref 'Do
 				    'Q
 				]
-			    ]
-			]
-
-			comment [
-			    im1: 0x0 
-			    im2: pos
-			    im3: face/image/size
-
-			    p11tl: 0x0
-			    p11lr: pos - 1x1
-			    p2tl: pos
-			    p2lr: pos 
-			    p33tl: pos + 1x1
-			    p33lr: face/image/size - 1x1
-			    p44tl: face/image/size
-			    s11: p2tl - p1tl
-			    s21: as-pair p3tl/x - p2tl/x p2tl/y - p1tl/y
-			    s31: as-pair p4tl/x - p3tl/x p2tl/y - p1tl/y
-			    s12: as-pair p2tl/x - p1tl/x p3tl/y - p2tl/y
-			    s22: p3tl - p2tl
-			    s13: as-pair p2tl/x - p1tl/x p4tl/y - p3tl/y
-			    s13: as-pair p2tl/x - p1tl/x p4tl/y - p3tl/y
-			    s23: as-pair p3tl/x - p2tl/x p4tl/y - p3tl/y
-			    s33: p44tl - p33tl
-			    ; column rad
-			    r11: to-refinement register-image copy/part p11tl s11
-			    r12: to-refinement register-image copy/part p12tl s12
-			    r13: to-refinement register-image copy/part p13tl s13
-			    r21: to-refinement register-image copy/part p21tl s21
-			    r31: to-refinement register-image copy/part p31tl s31
-			    r32: to-refinement register-image copy/part p32tl s32
-			    r33: to-refinement register-image copy/part p33tl s33
-
-			    f1: 0x0
-			    f2: pos
-			    f3: pos + ext
-			    f4: im3 + ext
-
-			    p12tl: p12tl
-			    p12lr: as-pair p12lr/x		p12lr/y + ext/y
-			    p21tl: p21tl
-			    p21lr: as-pair p21lr/x + ext/x	p21lr/y
-			    p22tl: p22tl
-			    p22lr: as-pair p22lr/x + ext/x	p22lr/y + ext/y
-
-			    p13tl: as-pair p13tl/x		p13tl/y + ext/y
-			    p13lr: as-pair p13lr/x		p13lr/y + ext/y
-			    p31tl: as-pair p31tl/x + ext/x	p31tl/y
-			    p31lr: as-pair p31lr/x + ext/x	p31lr/y
-
-
-			    ; Hence we get the areas
-			    ; uppler-left, upper-right lower-left lower-right horizontal vertical
-			    ; These are each to become a image of itself and later expanded and put at
-			    ; the right place.
-
-			    repend strea [
-				'q
-				    f2/x  0 0 negate f2/y
-				    0 f2/y 'cm 
-				    upper-left 'Do
-				'Q
-				'q
-				    f4/x - f3/x - 1 0 0 negate f3/y - f2/y + 1
-				    f3/x + 1  f2/y 'cm
-				    upper-right 'Do
-				'Q
-				'q
-				    f2/x 0 0 negate f4/y - f3/y - 1
-				    0 f4/y 'cm
-				    lower-left 'Do
-				'Q
-				'q
-				    f4/x - f3/x - 1 0 0 negate f4/y - f3/y - 1
-				    f3/x + 1 f4/y 'cm
-				    lower-right 'Do
-				'Q
-				'q
-				    f3/x - f2/x + 1 0 0 negate f2/y
-				    f2/x f2/y  'cm
-				    upper 'Do
-				'Q
-				'q
-				    f3/x - f2/x + 1 0 0 negate f4/y - f3/y - 1
-				    f2/x f4/y 'cm
-				    lower 'Do
-				'Q
-				'q
-				    f2/x - f1/x    0 0    negate f3/y - f2/y + 1
-				    0 f3/y + 1 'cm
-				    left 'Do
-				'Q
-				'q
-				    f4/x - f3/x - 1 0 0 negate f3/y - f2/y + 1
-				    f3/x + 1 f3/y + 1 'cm
-				    right 'Do
-				'Q
-				'q
-				    f3/x - f2/x + 1     0 0   negate f3/y - f2/y + 1
-				    f2/x f3/y + 1 'cm
-				    mid 'Do
-				'Q
-
 			    ]
 			]
 		    ]

@@ -31,12 +31,14 @@ view/new f: layout [
 
     box 150x150 puppy effect [ extend ] 
     image 50x50 special
-    box 50x50 special effect [ extend 1x1 ]  edge [ size: 5x2 color: black ]
-    box 50x50 red
+    from-box: box 50x50 special effect [ extend 1x1 ]  edge [ size: 5x2 color: black ]
+    r-box: box 50x50 red
     
     
     key #"q" [ unview ]
 ]
+r-box/image: to-image from-box
+show r-box
 
 write %effects.pdf lib/face-to-pdf f
 wait none
