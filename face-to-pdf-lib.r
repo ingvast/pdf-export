@@ -108,7 +108,9 @@ context [
 	;TODO: test this function next the parse of the effect ...
 
     rebol-draw-commands: [
-	pen fill-pen 
+	pen
+	fill-pen 
+	    radial conic diamond linear diagonal cubic
 	line-width
 	line-cap line-join line-pattern
 	miter miter-bevel round bevel
@@ -564,7 +566,6 @@ context [
 	    box: [
 		'box set p1 pair! set p2 pair! set p number! 
 		    (
-			? p1 ? p2 ? p
 			pth: probe draw-commands/arc
 				    as-pair  p2/x - p  p1/y + p
 				    p -90 90

@@ -461,12 +461,185 @@ context [
 	Type: /Shading
     ]
 
+    function-interp-dict!: make base-stream! [
+	Type: /Function
+	doc:
+	{Interpolation of n inputs to m outputs
+	    Size    is an array of the number of input samples of each input.
+		    So for one input with five samples it is [ 5 ]
+		    With two inputs three and eight samples it is [ 3 8 ]
+	    Order   Integer 1 or 3 of the order of interpolation.
+	    Encode  Array of how to encode the input.
+		    Meaning of lowest repsecively highest sample of each input dimension.
+		    [ in1SampleFirst in1_SampleLast ... in(n)SampleFirst in(n)SamleLast ]
+		    Default  0 and Size-1 Decode Array similar to Encode but for output.
+	    BitsPerSample Can be 1 2 4 8 12 16 24 32
+	The interpolation does not extrapolate outside the Domain, input is clipped.
+	Output is clipped to Range.
+	The values given are scanned for lowest and highest values, so Decode is normally 
+	set to the output dimension and Decode is calculated to precisely contain the samples.
+	}
+	append dict [
+	    BitsPerSample
+	    Size
+	    Order
+	    Decode Encode
+	]
+	FunctionType: 0
+	BitsPerSample: 'required
+	Size: 'required ; How many samples of each input dimension
+	Order: 1 ; Interpolation order (1 or 3)
+	Encode: none ; The input values are scaled against this vector.
+	Decode: none 
 
-    shading-dict!: make base-obj! [
-	append dict [ Type PatternType ShadingType  ColorSpace ]
-	PatternType: 2
-	ShadingType: none
+	sampleToBin: func [
+	     value [number!] {A number to make binary. Values are bound to [0, 1]}
+	     bits [integer!] {A value of number of bits, steps of 8}
+	     /local result 
+	][
+	    value: max 0.0 value
+	    value: min 1.0 value
+	    value: round value * ( 2 ** bits - 1 )
+	    result: copy []
+	    repeat i bits / 8 [
+		insert result value and 255
+		value: shift value 8
+	    ]
+	    make binary! result
+	]
+	bin-to-block: func [ bin /local p result ][
+	    result: copy []
+	    parse/all bin [ any [ copy p skip ( append result to-integer to-char p ) ] ]
+	    result 
+	]
+	to-binary-string: func [ 
+	    /local
+		inter base
+		dims
+		result
+	][
+	    base: to-integer 2 ** BitsPerSample
+	    ;Decode: reduce [ negate shifting shifting negate shifting shifting 0 1 0 1 0 1]
+	    inter: copy []
+	    ; transform data that is not numbers.
+	    foreach item stream [
+		item
+		switch/default type? item reduce [ 
+		    integer! [ append  inter item ]
+		    pair! [ repend inter [ item/x item/y ] ]
+		    tuple! [ foreach b to-binary item [ append inter b ] ]
+		] [
+		    make error!  reform [
+			"Error:"
+			type? item
+			"Cannot be given in shading triangles streams"
+		    ]
+		]
+	    ]
+	    result: copy #{}
+	    if integer? Decode [ 
+		dims: Decode
+		Decode: copy []
+		loop dims [ append Decode [ 1e36 -1e36 ] ]
+		while [ not tail? inter ] [ 
+		    x: first+ inter
+		    Decode/1: min Decode/1 x
+		    Decode/2: max Decode/2 x
+		    if empty? Decode: skip Decode 2 [ Decode: head Decode ]
+		]   
+		; Check we have used all the Decode components, otherwise the data
+		; is not the correct length
+		unless head? Decode [ make error! {Data in type 0 function is not right length} ]
+		while [ not tail? Decode ] [ ; Make sure Decode spans all dimensions
+		    if Decode/1 = Decode/2 [ Decode/2: Decode/1 + 1 ]
+		    Decode: skip Decode 2
+		]
+		Decode: head Decode
+	    ]
+	    inter: head inter
+	    while [ not tail? inter ] [ 
+		x: first+ inter
+		low: first Decode
+		high: second Decode
+		;print [ low high  x ]
+		append result sampleToBin x - low / ( high - low )  BitsPerSample
+		if empty? Decode: skip Decode 2 [ Decode: head Decode ]
+	    ]   
+	    result
+	]
+	to-string: func [ obj-list ] [
+	    unless block? stream [ stream: reduce [ stream ] ]
+
+	    stream: reduce stream
+	    stream-string: to-binary-string
+
+	    to-string*/is-stream obj-list
+	    append string stream-start
+	    append string newline
+	    append string stream-string
+	    append string newline
+
+	    if stream-end [ repend string [ stream-end newline ] ]
+	    if footer [ repend string  [ footer newline ] ]
+	    string
+	]
+	init: func [ spec ][
+	    spec: bind/copy spec self
+	    do spec
+	]
+    ]
+
+    shading-pattern-dict!: make base-obj! [
+	append dict [
+		Type
+		PatternType
+		Matrix
+		ExtGState
+		Shading
+	]
+	Type: /Pattern
+	PatternType: 2 ; shading patterns
+	Shading: 'required  ; An object such as shading-axial-dict!
+	Matrix: none
+	ExtGState: none
+	init: func [ spec ][
+	    Shading: first reduce spec
+	]
+    ]
+
+    shading-proto-dict!: make base-obj! [
+	append dict [ 
+	    ShadingType
+	    ColorSpace
+	    Background
+	    BBox
+	    AntiAlias
+	]
+	ShadingType: 'required
 	ColorSpace: /DeviceRGB
+	Background: none
+	BBox: none
+	AntiAlias: none
+	init: func [ spec ][
+	    spec: bind/copy spec self
+	    do spec
+	]
+    ]
+
+    shading-axial-dict!: make shading-proto-dict! [
+	append dict [
+		Coords Domain
+		Function Extend
+	]
+	ShadingType: 2
+	Coords:  [ 0 0 100 100 ]
+	Function: 'required
+	Extend: none
+	Domain: none
+	from-to: func [ from to ][
+	    Coords/1: from/1 Coords/2: from/2
+	    Coords/3: to/1   Coords/4: to/2
+	]
     ]
 
     shading-triangles-dict!: make base-stream! [
@@ -499,7 +672,7 @@ context [
 	    See also the  method test-triangles
 	}
 	append dict [
-	    Type PatternType ShadingType
+	    PatternType ShadingType
 	    ColorSpace Decode BitsPerComponent
 	    BitsPerCoordinate BitsPerFlag
 	]
@@ -841,7 +1014,7 @@ context [
 		0 100x100  red
 		0 200x0    green
 		0 255x200  blue
-		3 0x0   black ; flag tells which coordinate of last triangle to drop
+		3 0x100   black ; flag tells which coordinate of last triangle to drop
 	    ]
 	    cont: doc/make-obj base-stream! compose [
 		1 0.1 -0.15 0.9 -50 100 cm
@@ -861,6 +1034,81 @@ context [
 	    catalog: doc/make-obj/root catalog-dict! [ pages ]
 
 	    write %triangle.pdf doc/to-string
+	    true
+	] [
+	    err: disarm err
+	    ? err
+	]
+    ]
+    test-shading-axial: func [
+    ][
+	if error? err: try [
+	    
+	    doc: prepare-pdf
+
+	    fun1: doc/make-obj function-interp-dict! [
+		Decode: 1
+		Encode: [ 5 10 ]
+		Size: [4]
+		BitsPerSample: 8
+		stream: [
+		    1 2 0 1
+		]
+	    ]
+
+	    fun2: doc/make-obj function-interp-dict! [
+		Decode: 3
+		Encode: [ 0 40 ]
+		Size: [4]
+		BitsPerSample: 8
+		stream: [
+		    red black blue magenta * 0.4
+		]
+	    ]
+
+	    fun3: doc/make-obj function-interp-dict! [
+		Decode: 1
+		Encode: [ 0 40 10 30 ]
+		Size: [3 4]
+		BitsPerSample: 8
+		stream: [
+		    1 2 3
+		    3 2 1
+		    1 1 1
+		    5 5 20
+		]
+	    ]
+
+	    axial: doc/make-obj shading-axial-dict! [
+		Function: fun2
+		Domain: [ 0 40 ] 
+		Extend: [ true true ]
+		from-to 0x0 200x0
+	    ]
+
+	    shade: doc/make-obj shading-pattern-dict! [ axial ]
+
+	    shades: doc/make-obj shadings-dict! [ /axi shade ]
+	    resource: doc/make-obj resources-dict! [ shades  fun2 ]
+
+	    cont: doc/make-obj base-stream! compose [
+		;1 0 0 1 0 100 cm
+		0 0.5 0.8 RG
+		;/Shading cs
+		/axi scn
+		4 w
+		100x100 m
+		200x0 l
+		255x200 l h
+		B
+	    ]
+
+	    page: doc/make-obj page-dict! [ resource cont ]
+	    page/set-mediaBox [ 0 0 400 300 ]
+	    pages: doc/make-obj pages-dict! [ page ]
+	    catalog: doc/make-obj/root catalog-dict! [ pages ]
+
+	    write %shadings.pdf doc/to-string
 	    true
 	] [
 	    err: disarm err
