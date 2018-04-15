@@ -176,9 +176,20 @@ dr17: [
     fill-pen none pen beige line-width 1
     box 10x10 100x40 10
 ]
+dr18: [
+    pen none fill-pen black line-pattern none
+    font fnt text vectorial "Gradients"
+    ; fill-pen color type offset start-rng end-rng angle scalex scaley colors ...
+    fill-pen        radial 10x20 0         50       10    1      1      blue green red yellow  
+    box 0x15 150x50 box 70x0 100x70
+    fill-pen blue   linear 10x65 0         50       45    1      1      green red yellow  
+    box 0x50 150x90 
+    fill-pen blue   linear 10x115 0         50       45    10      10      green red yellow  
+    box 0x90 150x130 
+]
+    
 
-
-drs: copy []  repeat i 17 [ append drs to-word rejoin [ "dr" i ]]
+drs: copy []  repeat i 18 [ append drs to-word rejoin [ "dr" i ]]
 
 replace drs 'dr12 []
 

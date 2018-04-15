@@ -447,7 +447,7 @@ context [
 		append string to-pdf-string obj-list reduce [ value ]
 		append string newline
 	    ]
-	    append string ">>^/"
+	    append string ">>^/endobj^/"
 	    string
 	]
     ]
@@ -459,6 +459,20 @@ context [
     ]
     shadings-dict!:  make objs-dict! [
 	Type: /Shading
+    ]
+
+    function-poly-dict!: make base-obj! [
+	append dict [
+	    C0 C1
+	    N
+	    FunctionType
+	    Domain
+	]
+	C0: [ 0 ]
+	C1: [ 1 ]
+	N:  [ 1 ]
+	Domain: [ 0 1 ]
+	FunctionType: 2
     ]
 
     function-interp-dict!: make base-stream! [
@@ -484,6 +498,7 @@ context [
 	    Size
 	    Order
 	    Decode Encode
+	    Domain Range
 	]
 	FunctionType: 0
 	BitsPerSample: 'required
@@ -491,6 +506,11 @@ context [
 	Order: 1 ; Interpolation order (1 or 3)
 	Encode: none ; The input values are scaled against this vector.
 	Decode: none 
+	Domain: 'required
+	Range: 'required
+	scale: 1 ; This is the number that the values in given in the stream is multipled with 
+		 ; ie if clors are given in 0 - 255 values scale should be 1 / 255 because
+		 ; colors are 0 - 1.0 in pdf encoding
 
 	sampleToBin: func [
 	     value [number!] {A number to make binary. Values are bound to [0, 1]}
@@ -525,9 +545,9 @@ context [
 	    foreach item stream [
 		item
 		switch/default type? item reduce [ 
-		    integer! [ append  inter item ]
-		    pair! [ repend inter [ item/x item/y ] ]
-		    tuple! [ foreach b to-binary item [ append inter b ] ]
+		    integer! decimal! [ append  inter item  * scale ]
+		    pair! [ repend inter [ item/x * scale  item/y * scale  ] ]
+		    tuple! [ foreach b to-binary item [ append inter b * scale  ] ]
 		] [
 		    make error!  reform [
 			"Error:"
@@ -914,7 +934,7 @@ context [
 		xref: make-obj xref-obj!  [ obj-list ]
 		trailer: make-obj trailer-dict! [ xref Root ]
 
-		trailer/Size: length? obj-list
+		trailer/Size: -1 + length? obj-list
 
 		check
 		
@@ -1046,61 +1066,52 @@ context [
 	    
 	    doc: prepare-pdf
 
-	    fun1: doc/make-obj function-interp-dict! [
-		Decode: 1
-		Encode: [ 5 10 ]
-		Size: [4]
-		BitsPerSample: 8
-		stream: [
-		    1 2 0 1
-		]
-	    ]
-
 	    fun2: doc/make-obj function-interp-dict! [
 		Decode: 3
-		Encode: [ 0 40 ]
-		Size: [4]
+		Encode: [ 0 1 ]
+		Domain: [ 0 1 ]
+		Range: [ 0 1  0 1 0 1]
+		Size: [2]
 		BitsPerSample: 8
+		scale: 1 / 255
 		stream: [
-		    red black blue magenta * 0.4
+		    white black
 		]
 	    ]
 
-	    fun3: doc/make-obj function-interp-dict! [
-		Decode: 1
-		Encode: [ 0 40 10 30 ]
-		Size: [3 4]
-		BitsPerSample: 8
-		stream: [
-		    1 2 3
-		    3 2 1
-		    1 1 1
-		    5 5 20
-		]
-	    ]
+	    fun: doc/make-obj make function-poly-dict! [
+		C0: [ 0 0 0 ]
+		C1: [ 1 1 0.3]
+		N: 1
+	    ] []
 
 	    axial: doc/make-obj shading-axial-dict! [
-		Function: fun2
-		Domain: [ 0 40 ] 
-		Extend: [ true true ]
-		from-to 0x0 200x0
+		Function: fun 
+		Domain: [ 0 1 ] 
+		Extend: [ true false ]
+		from-to 50x0 240x00
 	    ]
 
-	    shade: doc/make-obj shading-pattern-dict! [ axial ]
+	    ;shade: doc/make-obj shading-pattern-dict! [ axial ]
 
-	    shades: doc/make-obj shadings-dict! [ /axi shade ]
+	    shades: doc/make-obj shadings-dict! [ /axi axial ]
 	    resource: doc/make-obj resources-dict! [ shades  fun2 ]
 
 	    cont: doc/make-obj base-stream! compose [
-		;1 0 0 1 0 100 cm
+		q
+		    100x100 m
+		    200x0 l
+		    255x200 l h
+		    W n
+		    /axi sh
+		Q
+		0.3 0.3 0.3 rg
 		0 0.5 0.8 RG
-		;/Shading cs
-		/axi scn
 		4 w
 		100x100 m
 		200x0 l
 		255x200 l h
-		B
+		S
 	    ]
 
 	    page: doc/make-obj page-dict! [ resource cont ]
