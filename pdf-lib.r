@@ -499,6 +499,7 @@ context [
 	    Order
 	    Decode Encode
 	    Domain Range
+	    FunctionType
 	]
 	FunctionType: 0
 	BitsPerSample: 'required
@@ -1066,6 +1067,12 @@ context [
 	    
 	    doc: prepare-pdf
 
+	    fun: doc/make-obj make function-poly-dict! [
+		C0: [ 0 0 0 ]
+		C1: [ 1 1 0.3]
+		N: 1
+	    ] []
+
 	    fun2: doc/make-obj function-interp-dict! [
 		Decode: 3
 		Encode: [ 0 1 ]
@@ -1079,23 +1086,23 @@ context [
 		]
 	    ]
 
-	    fun: doc/make-obj make function-poly-dict! [
-		C0: [ 0 0 0 ]
-		C1: [ 1 1 0.3]
-		N: 1
-	    ] []
-
 	    axial: doc/make-obj shading-axial-dict! [
 		Function: fun 
 		Domain: [ 0 1 ] 
 		Extend: [ true false ]
 		from-to 50x0 240x00
 	    ]
+	    axial2: doc/make-obj shading-axial-dict! [
+		Function: fun2
+		Domain: [ 0 1 ] 
+		Extend: [ false true ]
+		from-to 50x0 240x00
+	    ]
 
 	    ;shade: doc/make-obj shading-pattern-dict! [ axial ]
 
-	    shades: doc/make-obj shadings-dict! [ /axi axial ]
-	    resource: doc/make-obj resources-dict! [ shades  fun2 ]
+	    shades: doc/make-obj shadings-dict! [ /axi axial /axi2 axial2 ]
+	    resource: doc/make-obj resources-dict! [ shades ]
 
 	    cont: doc/make-obj base-stream! compose [
 		q
@@ -1112,6 +1119,22 @@ context [
 		200x0 l
 		255x200 l h
 		S
+		q
+		    1 0 0 1 70x20 cm
+		    q
+			100x100 m
+			200x0 l
+			255x200 l h
+			W n
+			/axi2 sh
+		    Q
+		    (violet) RG
+		    4 w
+		    100x100 m
+		    200x0 l
+		    255x200 l h
+		    S
+		Q
 	    ]
 
 	    page: doc/make-obj page-dict! [ resource cont ]
