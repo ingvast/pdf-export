@@ -118,6 +118,45 @@ context [
 	    obj/type = 'image-alpha!
 	]
     ]
+    transform-content: func [
+	{Transforms the data in stream into real values.
+	 pairs are made into two values.
+	 tuples with length three treated as colors and transformed into pdf color values,
+	 i.e. 0.0 - 1.0}
+	stream [block!]
+	/rgb {Transforms tuples of length 3 to pdf color}
+	/scale sc [block! number!] {Applies the values in sc on the resulting data}
+	/local item  result s
+    ][
+	result: copy []
+
+	sc: any [ sc copy [1] ]
+	next-sc: does [
+	    also first+ sc
+		 if tail? sc [ sc: head sc ]
+	]
+
+	foreach item stream [
+	    switch/default type? item reduce [ 
+		integer! decimal! [ append  result item * next-sc ]
+		pair! [ repend result [ item/x * next-sc item/y * next-sc] ]
+		tuple! [
+		    either all [ rgb 3 = length? item]  [
+			foreach b to-binary item [ append result b / 255.0 * next-sc ] 
+		    ][
+			foreach b to-binary item [ append result b * next-sc] 
+		    ]
+		]
+	    ] [
+		make error!  reform [
+		    "Error:"
+		    type? item
+		    "Cannot be given in this type of stream"
+		]
+	    ]
+	]
+	result
+    ]
 
     to-pdf-string: func [
 	{Takes a block of pdf graphics commands (encoded as rebol) and
@@ -509,9 +548,6 @@ context [
 	Decode: none 
 	Domain: 'required
 	Range: 'required
-	scale: 1 ; This is the number that the values in given in the stream is multipled with 
-		 ; ie if clors are given in 0 - 255 values scale should be 1 / 255 because
-		 ; colors are 0 - 1.0 in pdf encoding
 
 	sampleToBin: func [
 	     value [number!] {A number to make binary. Values are bound to [0, 1]}
@@ -540,25 +576,12 @@ context [
 		result
 	][
 	    base: to-integer 2 ** BitsPerSample
-	    ;Decode: reduce [ negate shifting shifting negate shifting shifting 0 1 0 1 0 1]
-	    inter: copy []
+
 	    ; transform data that is not numbers.
-	    foreach item stream [
-		item
-		switch/default type? item reduce [ 
-		    integer! decimal! [ append  inter item  * scale ]
-		    pair! [ repend inter [ item/x * scale  item/y * scale  ] ]
-		    tuple! [ foreach b to-binary item [ append inter b * scale  ] ]
-		] [
-		    make error!  reform [
-			"Error:"
-			type? item
-			"Cannot be given in shading triangles streams"
-		    ]
-		]
-	    ]
+	    inter: transform-content/rgb stream
+
 	    result: copy #{}
-	    if integer? Decode [ 
+	    if integer? Decode [  ; Automatically set Decode to the range that data spans
 		dims: Decode
 		Decode: copy []
 		loop dims [ append Decode [ 1e36 -1e36 ] ]
@@ -566,7 +589,7 @@ context [
 		    x: first+ inter
 		    Decode/1: min Decode/1 x
 		    Decode/2: max Decode/2 x
-		    if empty? Decode: skip Decode 2 [ Decode: head Decode ]
+		    if tail? Decode: skip Decode 2 [ Decode: head Decode ]
 		]   
 		; Check we have used all the Decode components, otherwise the data
 		; is not the correct length
@@ -582,9 +605,8 @@ context [
 		x: first+ inter
 		low: first Decode
 		high: second Decode
-		;print [ low high  x ]
 		append result sampleToBin x - low / ( high - low )  BitsPerSample
-		if empty? Decode: skip Decode 2 [ Decode: head Decode ]
+		if tail? Decode: skip Decode 2 [ Decode: head Decode ]
 	    ]   
 	    result
 	]
@@ -604,6 +626,43 @@ context [
 	    if footer [ repend string  [ footer newline ] ]
 	    string
 	]
+
+	one-input-dimension: func [
+	    { 
+		Use when the input is one dimensional.
+	    }
+	    dims-out [integer!] {Number of dimensions in ouput}
+	    spec [block!] {List of values}
+	    /Domain domain-values [block!] {The low and high of input value. Default [0 1/(size-1)]}
+	    /local Range-low Range-high
+	] [
+	    stream: transform-content/rgb reduce spec
+	    Decode: dims-out
+	    Size: reduce [ ( length? stream ) / dims-out ]
+	    self/Domain: any [ domain-values copy [0 1] ]
+	    insert/dup Range-low:  copy []  1e36 dims-out 
+	    insert/dup Range-high: copy [] -1e36 dims-out 
+	    Range-low: tail Range-low
+	    Range-high: tail Range-high
+
+	    foreach x stream [
+		probe x
+		if tail? Range-low  [ Range-low:  head Range-low ]
+		if tail? Range-high [ Range-high: head Range-high ]
+		if x > Range-high/1 [ Range-high/1: x ]
+		if x < Range-low/1  [ Range-low/1:  x ]
+		first+ Range-high
+		first+ Range-low
+	    ]
+	    Range: copy []
+	    Range-low:  head Range-low
+	    Range-high: head Range-high
+	    repeat i dims-out [
+		append Range Range-low/:i
+		append Range Range-high/:i
+	    ]
+	]
+
 	init: func [ spec ][
 	    spec: bind/copy spec self
 	    do spec
@@ -730,21 +789,9 @@ context [
 	    base: to-integer 2 ** BitsPerCoordinate
 	    shifting: base / 2
 	    Decode: reduce [ negate shifting shifting negate shifting shifting 0 1 0 1 0 1]
-	    inter: copy []
-	    foreach item stream [
-		item
-		switch/default type? item reduce [ 
-		    integer! [ append  inter item ]
-		    pair! [ repend inter [ item/x item/y ] ]
-		    tuple! [ foreach b to-binary item [ append inter b ] ]
-		] [
-		    make error!  reform [
-			"Error:"
-			type? item
-			"Cannot be given in shading triangles streams"
-		    ]
-		]
-	    ]
+
+	    inter: transform-content stream
+
 	    result: copy #{}
 	    foreach [ flag x y r g b ] inter [
 		append result componentsToBin flag BitsPerFlag
@@ -1074,16 +1121,17 @@ context [
 	    ] []
 
 	    fun2: doc/make-obj function-interp-dict! [
-		Decode: 3
-		Encode: [ 0 1 ]
-		Domain: [ 0 1 ]
-		Range: [ 0 1  0 1 0 1]
-		Size: [2]
+		;Decode: 3
+		;Encode: [ 0 1 ]
+		;Domain: [ 0 0.5 ]
+		;Range: [ 0 1  0 1 0 1]
+		;Size: [3]
+		;BitsPerSample: 8
+		;scale: 1 / 255
 		BitsPerSample: 8
-		scale: 1 / 255
-		stream: [
-		    white black
-		]
+		one-input-dimension 3 [
+		    red green blue  mint tan oldrab snow brown coal yellow
+		] 
 	    ]
 
 	    axial: doc/make-obj shading-axial-dict! [
@@ -1095,44 +1143,50 @@ context [
 	    axial2: doc/make-obj shading-axial-dict! [
 		Function: fun2
 		Domain: [ 0 1 ] 
-		Extend: [ false true ]
-		from-to 50x0 240x00
+		Extend: [ false false ]
+		from-to 0x100 90x10
 	    ]
+	    ;bullet: doc/make-obj shading-radial-dict! [
+		;Function: fun2
+		;Domain: [ 0 1 ] 
+		;Extend: [ false false ]
+		;from-to 0x100 90x10
+	    ;]
 
 	    ;shade: doc/make-obj shading-pattern-dict! [ axial ]
 
-	    shades: doc/make-obj shadings-dict! [ /axi axial /axi2 axial2 ]
+	    shades: doc/make-obj shadings-dict! [ /axi axial /axi2 axial2 /bullet bullet ]
 	    resource: doc/make-obj resources-dict! [ shades ]
 
 	    cont: doc/make-obj base-stream! compose [
 		q
-		    100x100 m
-		    200x0 l
-		    255x200 l h
+		    000x100 m
+		    100x0 l
+		    155x200 l h
 		    W n
 		    /axi sh
 		Q
 		0.3 0.3 0.3 rg
 		0 0.5 0.8 RG
 		4 w
-		100x100 m
-		200x0 l
-		255x200 l h
+		000x100 m
+		100x0 l
+		155x200 l h
 		S
 		q
 		    1 0 0 1 70x20 cm
 		    q
-			100x100 m
-			200x0 l
-			255x200 l h
+			0x100 m
+			100x0 l
+			155x200 l h
 			W n
 			/axi2 sh
 		    Q
 		    (violet) RG
 		    4 w
-		    100x100 m
-		    200x0 l
-		    255x200 l h
+		    0x100 m
+		    100x0 l
+		    155x200 l h
 		    S
 		Q
 	    ]
