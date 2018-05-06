@@ -712,13 +712,34 @@ context [
 		Function Extend
 	]
 	ShadingType: 2
-	Coords:  [ 0 0 100 100 ]
+	Coords:  'required
 	Function: 'required
 	Extend: none
 	Domain: none
 	from-to: func [ from to ][
+	    if Coords = 'required [ Coords: reduce [ none none none none ] ]
 	    Coords/1: from/1 Coords/2: from/2
 	    Coords/3: to/1   Coords/4: to/2
+	]
+    ]
+
+    shading-radial-dict!: make shading-proto-dict! [
+	append dict [
+		Coords Domain
+		Function Extend
+	]
+	ShadingType: 3
+	Coords:  'required
+	Function: 'required
+	Extend: none
+	Domain: none
+	from: func [ p [pair! block!] r [number!] ][
+	    if Coords = 'required [ Coords: reduce [ none none none none none none ] ]
+	    Coords/1: p/1 Coords/2: p/2 Coords/3: r
+	]
+	to: func [ p [pair! block!] r [number!] ][
+	    if Coords = 'required [ Coords: reduce [ none none none none none none ] ]
+	    Coords/4: p/1 Coords/5: p/2 Coords/6: r
 	]
     ]
 
@@ -1146,14 +1167,14 @@ context [
 		Extend: [ false false ]
 		from-to 0x100 90x10
 	    ]
-	    ;bullet: doc/make-obj shading-radial-dict! [
-		;Function: fun2
-		;Domain: [ 0 1 ] 
-		;Extend: [ false false ]
-		;from-to 0x100 90x10
-	    ;]
+	    bullet: doc/make-obj shading-radial-dict! [
+		Function: fun2
+		Domain: [ 0 1 ] 
+		Extend: [ false true ]
+		from 50x50 0
+		to 80x50 35
+	    ]
 
-	    ;shade: doc/make-obj shading-pattern-dict! [ axial ]
 
 	    shades: doc/make-obj shadings-dict! [ /axi axial /axi2 axial2 /bullet bullet ]
 	    resource: doc/make-obj resources-dict! [ shades ]
@@ -1187,6 +1208,24 @@ context [
 		    0x100 m
 		    100x0 l
 		    155x200 l h
+		    S
+		Q
+		q
+		    1 0 0 1 200x20 cm
+		    q
+			0x0 m
+			100x0 l
+			100x100 l 
+			0x100 l h
+			W n
+			/bullet sh
+		    Q
+		    (coal) RG
+		    4 w
+		    0x0 m
+		    100x0 l
+		    100x100 l 
+		    0x100 l h
 		    S
 		Q
 	    ]
