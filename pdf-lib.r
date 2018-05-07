@@ -499,6 +499,9 @@ context [
     shadings-dict!:  make objs-dict! [
 	Type: /Shading
     ]
+    patterns-dict!:  make objs-dict! [
+	Type: /Pattern
+    ]
 
     function-poly-dict!: make base-obj! [
 	append dict [
@@ -646,7 +649,6 @@ context [
 	    Range-high: tail Range-high
 
 	    foreach x stream [
-		probe x
 		if tail? Range-low  [ Range-low:  head Range-low ]
 		if tail? Range-high [ Range-high: head Range-high ]
 		if x > Range-high/1 [ Range-high/1: x ]
@@ -849,7 +851,8 @@ context [
 	ExtGState: none
 	ProcSet: [ /PDF /Text /ImageB /ImageC /ImageI ]
 	Shading: none
-	append dict [ Shading Font XObject ProcSet ExtGState ]
+	Pattern: none
+	append dict [ Shading Font XObject ProcSet ExtGState Pattern]
 	init: func [ spec ][
 	    foreach s spec [
 		if word? s [ s: get s ]
@@ -862,6 +865,9 @@ context [
 		    ]
 		    /Shading [
 			Shading: s
+		    ]
+		    /Pattern [
+			Pattern: s
 		    ]
 		]
 	    ]
@@ -1177,7 +1183,12 @@ context [
 
 
 	    shades: doc/make-obj shadings-dict! [ /axi axial /axi2 axial2 /bullet bullet ]
-	    resource: doc/make-obj resources-dict! [ shades ]
+
+	    pattern: doc/make-obj shading-pattern-dict! [ bullet ]
+
+	    patterns: doc/make-obj patterns-dict! [ /P1 pattern ]
+
+	    resource: doc/make-obj resources-dict! [ shades patterns ]
 
 	    cont: doc/make-obj base-stream! compose [
 		q
@@ -1228,6 +1239,14 @@ context [
 		    0x100 l h
 		    S
 		Q
+		0.8 G
+		/Pattern cs
+		/P1 scn
+		5 w
+		100x100 m
+		250x50 l
+		50x0 l h
+		B
 	    ]
 
 	    page: doc/make-obj page-dict! [ resource cont ]
