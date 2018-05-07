@@ -1148,13 +1148,6 @@ context [
 	    ] []
 
 	    fun2: doc/make-obj function-interp-dict! [
-		;Decode: 3
-		;Encode: [ 0 1 ]
-		;Domain: [ 0 0.5 ]
-		;Range: [ 0 1  0 1 0 1]
-		;Size: [3]
-		;BitsPerSample: 8
-		;scale: 1 / 255
 		BitsPerSample: 8
 		one-input-dimension 3 [
 		    red green blue  mint tan oldrab snow brown coal yellow
@@ -1239,6 +1232,7 @@ context [
 		    0x100 l h
 		    S
 		Q
+		1 0 0 1 -50x0 cm
 		0.8 G
 		/Pattern cs
 		/P1 scn
@@ -1247,6 +1241,12 @@ context [
 		250x50 l
 		50x0 l h
 		B
+		/Pattern CS ; Here there is an error in evince that does not render this as the pattern
+		/P1 SCN ; However ghostscript does
+		10 w
+		100x0 m
+		100x150 l
+		S
 	    ]
 
 	    page: doc/make-obj page-dict! [ resource cont ]
