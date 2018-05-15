@@ -90,6 +90,40 @@ context [
 	]
     ]
 
+    matrix-mult: func [
+	{Multiply m1 with m2 given that m1 is given as a list of 
+	     [ m1/1 m1/3 m1/5 ]
+	     [ m1/2 m1/4 m1/6 ]
+	     [ 0    0     1   ]
+
+         So the multiplication is:
+	     [ m1/1 m1/3 m1/5 ]    [ m2/1 m2/3 m2/5 ]   
+	     [ m1/2 m1/4 m1/6 ]  x [ m2/2 m2/4 m2/6 ]  =
+	     [ 0    0     1   ]    [ 0    0     1   ]   
+
+	       [ m1/1*m2/1+m1/3*m2/2  m1/1*m2/3+m1/3*m2/4  m1/1*m2/5+m1/3*m2/6+m1/5 ]
+	     = [ m1/2*m2/1+m1/4*m2/2  m1/2*m2/3+m1/4*m2/4  m1/2*m2/5+m1/4*m2/6+m1/6 ]
+	       [ 0			0		     1			    ]
+
+
+	Hence the resulting new list is:
+	    [ m1/1*m2/1+m1/3*m2/2  m1/2*m2/1+m1/4*m2/2  m1/1*m2/3+m1/3*m2/4  m1/2*m2/3+m1/4*m2/4  m1/1*m2/5+m1/3*m2/6+m1/5 m1/2*m2/5+m1/4*m2/6+m1/6 ]
+
+	      m1/1*m2/1+m1/3*m2/2  m1/2*m2/1+m1/4*m2/2  m1/1*m2/3+m1/3*m2/4  m1/2*m2/3+m1/4*m2/4  m1/1*m2/5+m1/3*m2/6+m1/5  m1/2*m2/5+m1/4*m2/6+m1/6
+	}
+	 m1 [block!] {Matrix one}
+	 m2 [block!] {Matrix two}
+    ][
+	    reduce [
+		m1/1 * m2/1 + ( m1/3 * m2/2 )
+		m1/2 * m2/1 + ( m1/4 * m2/2 )
+		m1/1 * m2/3 + ( m1/3 * m2/4 )
+		m1/2 * m2/3 + ( m1/4 * m2/4 )
+		m1/1 * m2/5 + ( m1/3 * m2/6 ) + m1/5
+		m1/2 * m2/5 + ( m1/4 * m2/6 ) + m1/6
+	    ]
+    ]
+
     reduce-all-but: func [
 	{Returns a copy of block which is evaluated except the words in names 
 	 which are treated as lited}
@@ -142,6 +176,23 @@ context [
     rebol-draw-binding: copy []
     foreach x rebol-draw-commands [ repend rebol-draw-binding [ to-set-word x to-lit-word x ] ]
     rebol-draw-binding: context rebol-draw-binding
+
+    matrix-stack: copy []
+    current-matrix: copy [ 1 0 0 1 0 0]
+    matrix-pop: does [
+	also 
+	    last matrix-stack
+	    (
+		remove back tail matrix-stack
+		?? matrix-stack 
+	    )
+    ]
+    matrix-push: func [ mtrx ][
+	append/only matrix-stack copy/part mtrx 6
+	? matrix-stack
+	mtrx
+    ]
+	
 
     eval-draw: func [
 	"Evalues a block so that all functions are run and variables replaced by its content"
@@ -381,6 +432,7 @@ context [
 	    current-line-join: 0
 	    current-miter-limit: none
 	    current-arrow: 0x0
+
 
 	    path: copy []
 	    clear-path: does [ path: copy [] ]
@@ -688,43 +740,52 @@ context [
 		    ]
 		)
 	    ]
-	    translate: [
-		'translate set p pair! (
-		    append strea draw-commands/translate p/x p/y
-		)
-	    ]
-	    scale: [
-		'scale copy p 2 number! (
-		    append strea draw-commands/scale/xy/around p/1 p/2 0 0
-		)
-	    ]
-	    rotate: [
-		'rotate set p number! (
-		    append strea draw-commands/rotate 0 0 p
-		)
-	    ]
-	    skew: [
-		'skew set p number! (
-		    append strea draw-commands/skew p
-		)
-	    ]
 	    use [ mtrx ][
+		translate: [
+		    'translate set p pair! (
+			append strea mtrx: draw-commands/translate p/x p/y
+			current-matrix: matrix-mult current-matrix    mtrx
+		    )
+		]
+		scale: [
+		    'scale copy p 2 number! (
+			append strea mtrx: draw-commands/scale/xy/around p/1 p/2 0 0
+			current-matrix: matrix-mult current-matrix    mtrx
+		    )
+		]
+		rotate: [
+		    'rotate set p number! (
+			append strea mtrx: draw-commands/rotate 0 0 p
+			current-matrix: matrix-mult current-matrix    mtrx
+		    )
+		]
+		skew: [
+		    'skew set p number! (
+			append strea mtrx: draw-commands/skew p
+			current-matrix: matrix-mult current-matrix    mtrx
+		    )
+		]
 		matrix: [
 		    'matrix set mtrx block! (
-			    append strea draw-commands/matrix mtrx
-			    )
+			current-matrix: matrix-mult current-matrix  mtrx
+			append strea draw-commands/matrix mtrx
+		    )
 		]
 	    ]
 	    push: [
 		'push set cmds block! 
 		(
-		    repend strea [ 
-			'q ]
+		    matrix-push current-matrix
+
+		    repend strea [ 'q  ]
+
 		    set-current-env
 		    eval-patterns cmds
-		    repend strea [ 'Q
-			]
+
+		    repend strea [ 'Q  ]
+
 		    set-current-env
+		    current-matrix: matrix-pop
 		)
 	    ]
 	    text: [
@@ -1136,21 +1197,29 @@ context [
 		any [
 		    'draw set p skip  (
 			if word? p [ p: get p ]
+			matrix-push current-matrix
 			append strea compose [
 			    q
-			    ( draw-commands/translate offset/x offset/y )
 			    (
+				also
+				    mtrx: draw-commands/translate offset/x offset/y 
+				    current-matrix: matrix-mult current-matrix mtrx
+			    )
+				(
+
 				use [ draw-cmds ] [
 				    draw-cmds: p
 				    if word? draw-cmds [ draw-cmds: get draw-cmds ]
-				    draw-to-stream/noregister/size
-					'anything draw-cmds
-					face
-					face/size - ( 2x2 * offset )
+				    also
+					draw-to-stream/noregister/size
+					    'anything draw-cmds
+					    face
+					    face/size - ( 2x2 * offset )
 				]
 			    )
 			    Q    
 			]   
+			current-matrix: matrix-pop
 		    )
 		    |
 		    [ 'grid 
@@ -1175,7 +1244,7 @@ context [
 				    0 y 'm face/size/x y 'l
 				]
 			    ]
-			    append strea 'S
+			    append strea [ S Q ]
 			)
 		    ]
 		    |
@@ -1254,11 +1323,15 @@ context [
 		    object? :p [
 			pos: as-pair p/offset/x p/offset/y
 			append strea 'q
-			append strea draw-commands/translate pos/x pos/y
+			use [ mtrx ][
+			    append strea mtrx: draw-commands/translate pos/x pos/y
+			    current-matrix: matrix-mult current-matrix mtrx
+			]
 			save-current-font: current-font
 			append strea parse-face p
 			current-font: save-current-font
 			append strea 'Q
+			current-matrix: matrix-pop
 		    ]
 		    function? :p [ print "Transformation of functional panes not implemented" ]
 		    true	    [  print [ "Unknown object in pane!" type? :p ] ]

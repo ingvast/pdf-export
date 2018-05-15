@@ -68,8 +68,11 @@ dr10: [
     scale 0.5 0.5
     image puppy 140x50 20x140 5x20 
 ]
+
 dr11: [
-    font fnt text 0x0 vectorial "Curve"
+    pen none fill-pen black
+    font fnt text 0x0 vectorial "Curve and matrix"
+    matrix [ 1 0.1 -0.2 1.4 10 10 ]
     pen green
     fill-pen none
     line-width 3
@@ -79,6 +82,7 @@ dr11: [
     pen red fill-pen sky
     curve 25x25 90x25 90x90 25x90 
 ]
+
 dr12: [
     font fnt text vectorial "Clip Funny in Rebol" 
     fill-pen none pen green line-width 5
@@ -180,7 +184,7 @@ dr18: [
     pen none fill-pen black line-pattern none
     font fnt text vectorial "Gradients"
     ; fill-pen color type offset start-rng end-rng angle scalex scaley colors ...
-    fill-pen        radial 10x20 0         50       10    1      1      blue green red yellow  
+    fill-pen        radial 0x0 0         100       10    1      2      blue green red yellow  
     box 0x15 150x50 box 70x0 100x70
     fill-pen blue   linear 10x65 0         50       45    1      1      green red yellow  
     box 0x50 150x90 
