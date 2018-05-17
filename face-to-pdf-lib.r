@@ -31,19 +31,19 @@ REBOL [
 	* Fix some compressions
 	* Handle gradients
 	* Make use of font given. (Write font data to pdf)
+	* Alpha values for general graphic
+    }
+    DONE: {
+	* Handle alpha values of images
+	* Handle images
+	* Rewrite printf routines
+	* Improve the printing of strings to do proper escapes
 	* Handle the rest of draw commands 
 	    - arrow
 	    - line patterns
 	    - fill pen patterns
 	    - line join
 	    - line cap
-	    - shape (or maybe not)
-    }
-    DONE: {
-	* Handle alpha values
-	* Handle images
-	* Rewrite printf routines
-	* Improve the printing of strings to do proper escapes
     }
 
     Requires: [ pdf-lib ]
@@ -184,12 +184,12 @@ context [
 	    last matrix-stack
 	    (
 		remove back tail matrix-stack
-		?? matrix-stack 
+		matrix-stack 
 	    )
     ]
     matrix-push: func [ mtrx ][
 	append/only matrix-stack copy/part mtrx 6
-	? matrix-stack
+	matrix-stack
 	mtrx
     ]
 	
@@ -399,19 +399,16 @@ context [
 	name
     ]
 
-    has-alpha: func [ im [
+    has-alpha: func [ 
 	{Returns none if there is a alpha value not zero}
-	image!
-    ] ][
+	im [image!]
+    ][
 	find im/alpha charset [ #"^(01)" - #"^(ff)" ]
     ]
 
     draw-to-stream: func [
-	name [word!]  {Name of the stream object }
 	cmd [ block!] {The draw commands to parse}
-	f  [object!]  {The face from what to calculate original colours, and size}
-	/noregister {Set this to only return a stream, do not register with name}
-	/size sz
+	face  [object!]  {The face from what to calculate original colours, and size}
 	/local p s color strea patterns 
 	    render-mode  fnt 
     ][
@@ -529,7 +526,6 @@ context [
 		/local arrow
 		    r thickness-relation half-point-angle
 	    ][
-		
 		half-point-angle: 40
 		ca: cosine direction + 180
 		sa: sine direction + 180
@@ -928,14 +924,70 @@ context [
 		    append strea [ [] 0 d ]
 		    ] )
 	    ]
-	    fill-pen:  [
-		'fill-pen [
-		    set color tuple! (
-			current-fill:  color 
-			repend strea [ current-fill 'rg ]
-		    ) 
-		    | 
-		    none! ( current-fill: none )
+	    use [
+		fun shade
+		grad-offset grad-start-rng grad-stop-rng grad-angle
+		grad-scale-x grad-scale-y grad-colors
+	    ][
+		fill-pen:  [
+		    'fill-pen [
+			[
+			    set color tuple! (
+				current-fill:  color 
+				repend strea [ current-fill 'rg ]
+			    ) 
+			    | 
+			    none! ( current-fill: none )
+			    ( print current-fill )
+			]
+			copy shade-type [ 'radial | 'linear ] ; [| 'diamond | 'diagonal | 'cubic | 'conic ]
+			set grad-offset pair!
+			set grad-start-rng number!
+			set grad-stop-rng  number!
+			set grad-angle number!
+			set grad-scale-x number!
+			set grad-scale-y number!
+			copy grad-colors some tuple!
+			(
+			    ; Make the shading at grad-offset
+			    ; Set the shading marix to current-matrix and modify it with scale-xy
+			    ; Set the current pen value to the shading name
+[
+	This code needs to be hidden away to be processed later.  We do not hava a document yet.
+	(Why not!)
+	Still we need the name of the resulting shade to be used by the pen.
+
+			    fun: doc/make-obj function-interp-dict! [
+				BitsPerSample: 8
+				one-input-dimension 3 join color grad-colors
+			    ]
+			    switch grad-type [
+				linear [
+				    shade: doc/make-obj shading-axial-dict! [
+					Fuction: fun
+					Domain: [ 0 1 ]
+					Extend: [ true true ]
+					from-to
+					    grad-offset
+					    (as-pair grad-stop-rng * cosine grad-angle
+					     grad-stop-rng * sine grad-angle ) + grad-offset
+				    ]
+				]
+				radial [
+				    shade: doc/make-obj shading-axial-dict! [
+					Fuction: fun
+					Domain: [ 0 1 ]
+					Extend [ true true ]
+					from-to
+					    grad-offset
+					    (as-pair grad-stop-rng * cosine grad-angle
+					     grad-stop-rng * sine grad-angle ) + grad-offset
+				    ]
+				]
+			    ]
+]
+			)
+		    ]
 		]
 	    ]
 	    pen:  [
@@ -967,9 +1019,11 @@ context [
 		]
 		( repend strea [ current-line-cap 'J] )
 	    ]
-	    arrow: [ 'arrow
+	    arrow: [
+		'arrow
 		set current-arrow pair! 
 	    ]
+
 	    set-current-env: does [
 		if all[ not empty? current-pen current-pen/1 ]  [ repend strea [ current-pen/1 'RG ] ]
 		if current-fill [ repend strea [ current-fill 'rg ] ]
@@ -1025,21 +1079,11 @@ context [
 	]
 
 	patterns/current-line-width: 1
-	patterns/current-pen: reduce [ any [ all[ f/color inverse-color f/color ] black ] ]
+	patterns/current-pen: reduce [ any [ all[ face/color inverse-color face/color ] black ] ]
 	patterns/current-line-pattern: copy []
 
 	patterns/eval-patterns cmd
 	
-	unless noregister [
-	    stream name compose [ 
-		dict [
-		    /Length none
-		]
-		stream
-		(strea)  ; Remove the space in previous line
-		endstream
-	    ]
-	]
 	strea
     ]
 
@@ -1211,10 +1255,9 @@ context [
 				    draw-cmds: p
 				    if word? draw-cmds [ draw-cmds: get draw-cmds ]
 				    also
-					draw-to-stream/noregister/size
-					    'anything draw-cmds
+					draw-to-stream
+					    draw-cmds
 					    face
-					    face/size - ( 2x2 * offset )
 				]
 			    )
 			    Q    
