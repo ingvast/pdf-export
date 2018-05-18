@@ -177,7 +177,7 @@ context [
     foreach x rebol-draw-commands [ repend rebol-draw-binding [ to-set-word x to-lit-word x ] ]
     rebol-draw-binding: context rebol-draw-binding
 
-    matrix-stack: copy []
+    matrix-stack:   copy []
     current-matrix: copy [ 1 0 0 1 0 0]
     matrix-pop: does [
 	also 
@@ -337,10 +337,6 @@ context [
 	]
     ]
 
-
-    ; Make the font in face/font be the default font by using it once
-    current-font: make face/font [  ]
-
     ; The standard Type1 fonts in pdf are:
     ;   Times-Roman, Helvetica, Courier, Symbol,
     ;   Times-Bold, Helvetica-Bold, Courier-Bold,
@@ -348,6 +344,7 @@ context [
     ;   Courier-Oblique, Times-BoldItalic,
     ;   Helvetica-BoldOblique, Courier-BoldOblique
 
+    current-font: make face/font [  ]
     if system/version/4 == 4
     [
        current-font/name: "/usr/share/fonts/gnu-free/FreeSans.ttf"
@@ -361,7 +358,6 @@ context [
 	change/part str pre-fix 2
 	to-word str
     ]
-
 
     font-list: copy []
     image-list: copy []
@@ -415,21 +411,21 @@ context [
 	warning: func [ s ][ print [ "Warning!" s ] ]
 
 	strea: copy [ ]
+
 	patterns: context [
 	    ; locals 
 	    p: po: p1: p2: radius: string: pair: none
 	    matrix: none
 	    cmds: none
 
-	    current-pen: copy []
+	    current-pen: reduce [ any [ all[ face/color inverse-color face/color ] black ] ]
 	    current-fill: none
-	    current-line-width: none
+	    current-line-width: 1
 	    current-line-pattern: copy []
 	    current-line-cap: 0
 	    current-line-join: 0
 	    current-miter-limit: none
 	    current-arrow: 0x0
-
 
 	    path: copy []
 	    clear-path: does [ path: copy [] ]
@@ -1077,10 +1073,6 @@ context [
 		]
 	    ]
 	]
-
-	patterns/current-line-width: 1
-	patterns/current-pen: reduce [ any [ all[ face/color inverse-color face/color ] black ] ]
-	patterns/current-line-pattern: copy []
 
 	patterns/eval-patterns cmd
 	
