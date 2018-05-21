@@ -361,7 +361,9 @@ context [
 
     font-list: copy []
     image-list: copy []
-    triangle-list: copy [ ]
+
+    shading-triangles-list: copy [ ]
+
 
     register-font: func [ name /local tmp ][
 	if object? name [
@@ -389,8 +391,8 @@ context [
 
     register-triangle: func [ stream ][
 	name: create-unique-name/pre stream "T-"
-	unless find/skip triangle-list name 2 [
-	    repend triangle-list [ name stream ]
+	unless find/skip shading-triangles-list name 2 [
+	    repend shading-triangles-list [ name stream ]
 	]
 	name
     ]
@@ -817,7 +819,7 @@ context [
 			'Td
 			string 'Tj
 		    ]
-		    if all [ render-mode = 0 current-fill ][ repend strea [ current-fill  'rg ] ]
+		    if all [ render-mode = 0 current-fill ][ append strea current-fill ]
 		    repend strea [
 			'ET
 			'Q
@@ -929,12 +931,11 @@ context [
 		    'fill-pen [
 			[
 			    set color tuple! (
-				current-fill:  color 
-				repend strea [ current-fill 'rg ]
+				current-fill: reduce [  color  'rg ]
+				append strea current-fill
 			    ) 
 			    | 
 			    none! ( current-fill: none )
-			    ( print current-fill )
 			]
 			copy shade-type [ 'radial | 'linear ] ; [| 'diamond | 'diagonal | 'cubic | 'conic ]
 			set grad-offset pair!
@@ -953,34 +954,47 @@ context [
 	(Why not!)
 	Still we need the name of the resulting shade to be used by the pen.
 
-			    fun: doc/make-obj function-interp-dict! [
+			    fun-name: add-to-func-interp-list compose [
 				BitsPerSample: 8
-				one-input-dimension 3 join color grad-colors
+				one-input-dimension 3 join color ( reduce [ grad-colors ] )
 			    ]
 			    switch grad-type [
 				linear [
-				    shade: doc/make-obj shading-axial-dict! [
-					Fuction: fun
+				    shade-name: add-to-axial-shading-list compose [
+					Fuction: (to-refinement fun-name )
 					Domain: [ 0 1 ]
 					Extend: [ true true ]
 					from-to
-					    grad-offset
-					    (as-pair grad-stop-rng * cosine grad-angle
-					     grad-stop-rng * sine grad-angle ) + grad-offset
+					    (grad-offset)
+					    (
+						(as-pair grad-stop-rng * cosine grad-angle
+					               grad-stop-rng * sine grad-angle ) + grad-offset
+					    )
 				    ]
 				]
 				radial [
-				    shade: doc/make-obj shading-axial-dict! [
-					Fuction: fun
-					Domain: [ 0 1 ]
-					Extend [ true true ]
-					from-to
-					    grad-offset
-					    (as-pair grad-stop-rng * cosine grad-angle
-					     grad-stop-rng * sine grad-angle ) + grad-offset
+				    comment [
+					shade: doc/make-obj shading-axial-dict! [
+					    Fuction: fun
+					    Domain: [ 0 1 ]
+					    Extend [ true true ]
+					    from-to
+						grad-offset
+						(as-pair grad-stop-rng * cosine grad-angle
+						 grad-stop-rng * sine grad-angle ) + grad-offset
+					]
 				    ]
 				]
 			    ]
+			    pattern-name:  add-shading-pattern-list reduce [ 
+				 current-matrix to-refinement shade-name
+			    ]
+
+			    current-fill: compose [
+				/Pattern cs
+				(to-refinement partern-name)  scn
+			    ]
+			    append strea current-fill
 ]
 			)
 		    ]
@@ -1022,7 +1036,7 @@ context [
 
 	    set-current-env: does [
 		if all[ not empty? current-pen current-pen/1 ]  [ repend strea [ current-pen/1 'RG ] ]
-		if current-fill [ repend strea [ current-fill 'rg ] ]
+		if current-fill [ append strea current-fill  ]
 		if current-miter-limit [ repend strea [ current-miter-limit 'M ] ]
 		repend strea [
 		    current-line-width 'w
@@ -1438,7 +1452,9 @@ context [
 
 	; Handle patterns
 	shadings: doc/make-obj pdf-lib/shadings-dict!  []
-	foreach [name shade] triangle-list [
+
+	; Triangles
+	foreach [name shade] shading-triangles-list [
 	    shade-obj: doc/make-obj pdf-lib/shading-triangles-dict! shade
 	    shadings/add-obj name shade-obj
 	]
