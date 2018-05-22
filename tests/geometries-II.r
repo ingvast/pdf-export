@@ -230,7 +230,15 @@ view-it: func [ drs
 
 ]
 
-view-it drs
-write %geometries-II.pdf lib/face-to-pdf f
+if error? err: try [ 
+    view-it drs
+    write %geometries-II.pdf lib/face-to-pdf f
+    none
+] [
+    err: disarm err
+    ? err
+]
+
+
 wait none
 

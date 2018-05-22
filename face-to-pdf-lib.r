@@ -389,13 +389,50 @@ context [
 	name
     ]
 
-    register-triangle: func [ stream ][
+    register-shading-triangle: func [ stream /local name ][
 	name: create-unique-name/pre stream "T-"
 	unless find/skip shading-triangles-list name 2 [
 	    repend shading-triangles-list [ name stream ]
 	]
 	name
     ]
+
+    shading-axial-list: copy []
+    register-shading-axial: func [ data /local name ][
+	name: create-unique-name/pre data "SA-"
+	unless find/skip shading-axial-list name 2 [
+	    repend shading-axial-list [ name data ]
+	]
+	name
+    ]
+
+    shading-radial-list: copy []
+    register-shading-radial: func [ data /local name ][
+	name: create-unique-name/pre data "SR-"
+	unless find/skip shading-radial-list name 2 [
+	    repend shading-radial-list [ name data ]
+	]
+	name
+    ]
+
+    shading-pattern-list: copy []
+    register-shading-pattern: func [ data /local name  ][
+	name: create-unique-name/pre data "SP-"
+	unless find/skip shading-pattern-list name 2 [
+	    repend shading-pattern-list [ name data ]
+	]
+	name
+    ]
+
+    fun-interp-list: copy []
+    register-fun-interp: func [ data /local name  ][
+	name: create-unique-name/pre data "F-"
+	unless find/skip fun-interp-list name 2 [
+	    repend fun-interp-list [ name data ]
+	]
+	name
+    ]
+
 
     has-alpha: func [ 
 	{Returns none if there is a alpha value not zero}
@@ -612,19 +649,19 @@ context [
 	    box: [
 		'box set p1 pair! set p2 pair! set p number! 
 		    (
-			pth: probe draw-commands/arc
+			pth: draw-commands/arc
 				    as-pair  p2/x - p  p1/y + p
 				    p -90 90
 			add-path pth/ps
-			pth: probe draw-commands/arc/part
+			pth: draw-commands/arc/part
 				    as-pair  p2/x - p  p2/y - p
 				    p 0 90
 			add-path pth/ps
-			pth: probe draw-commands/arc/part
+			pth: draw-commands/arc/part
 				    as-pair p1/x + p  p2/y - p
 				    p 90 90
 			add-path pth/ps
-			pth: probe draw-commands/arc/part
+			pth: draw-commands/arc/part
 				    as-pair p1/x + p  p1/y + p
 				    p 180 90
 			add-path pth/ps
@@ -648,7 +685,7 @@ context [
 			    0 p/3 colors/3
 			]
 
-			name: register-triangle str
+			name: register-shading-triangle str
 			;add-to-patterns name
 			append strea compose [
 			    (to-refinement name ) sh
@@ -926,6 +963,8 @@ context [
 		fun shade
 		grad-offset grad-start-rng grad-stop-rng grad-angle
 		grad-scale-x grad-scale-y grad-colors
+		grad-type
+		pattern-name shade-name
 	    ][
 		fill-pen:  [
 		    'fill-pen [
@@ -937,7 +976,7 @@ context [
 			    | 
 			    none! ( current-fill: none )
 			]
-			copy shade-type [ 'radial | 'linear ] ; [| 'diamond | 'diagonal | 'cubic | 'conic ]
+			set grad-type [ 'radial | 'linear ] ; [| 'diamond | 'diagonal | 'cubic | 'conic ]
 			set grad-offset pair!
 			set grad-start-rng number!
 			set grad-stop-rng  number!
@@ -949,53 +988,49 @@ context [
 			    ; Make the shading at grad-offset
 			    ; Set the shading marix to current-matrix and modify it with scale-xy
 			    ; Set the current pen value to the shading name
-[
-	This code needs to be hidden away to be processed later.  We do not hava a document yet.
-	(Why not!)
-	Still we need the name of the resulting shade to be used by the pen.
 
-			    fun-name: add-to-func-interp-list compose [
-				BitsPerSample: 8
-				one-input-dimension 3 join color ( reduce [ grad-colors ] )
-			    ]
-			    switch grad-type [
-				linear [
-				    shade-name: add-to-axial-shading-list compose [
-					Fuction: (to-refinement fun-name )
-					Domain: [ 0 1 ]
-					Extend: [ true true ]
-					from-to
-					    (grad-offset)
-					    (
-						(as-pair grad-stop-rng * cosine grad-angle
-					               grad-stop-rng * sine grad-angle ) + grad-offset
-					    )
-				    ]
+				fun-name: register-fun-interp compose [
+				    BitsPerSample: 8
+				    one-input-dimension 3 (reduce [ join reduce [ color ]  grad-colors ] )
 				]
-				radial [
-				    comment [
-					shade: doc/make-obj shading-axial-dict! [
-					    Fuction: fun
+
+				switch grad-type [
+				    linear [
+					shade-name: register-shading-axial compose [
+					    Fuction: (to-refinement fun-name )
 					    Domain: [ 0 1 ]
-					    Extend [ true true ]
+					    Extend: [ true true ]
 					    from-to
-						grad-offset
-						(as-pair grad-stop-rng * cosine grad-angle
-						 grad-stop-rng * sine grad-angle ) + grad-offset
+						(grad-offset)
+						(
+						    (as-pair grad-stop-rng * cosine grad-angle
+							   grad-stop-rng * sine grad-angle ) + grad-offset
+						)
 					]
 				    ]
+				    radial [
+					    shade-name: register-shading-radial compose [
+						Fuction: (to-refinement fun-name )
+						Domain: [ 0 1 ]
+						Extend [ true true ]
+						from-to (
+						    grad-offset
+						    (as-pair grad-stop-rng * cosine grad-angle
+						     grad-stop-rng * sine grad-angle ) + grad-offset
+						)
+					    ]
+				    ]
 				]
-			    ]
-			    pattern-name:  add-shading-pattern-list reduce [ 
-				 current-matrix to-refinement shade-name
-			    ]
 
-			    current-fill: compose [
-				/Pattern cs
-				(to-refinement partern-name)  scn
-			    ]
-			    append strea current-fill
-]
+				pattern-name:  register-shading-pattern reduce [ 
+				     current-matrix to-refinement shade-name
+				]
+
+				current-fill: compose [
+				    /Pattern cs
+				    (to-refinement pattern-name)  scn
+				]
+				append strea current-fill
 			)
 		    ]
 		]
@@ -1449,6 +1484,12 @@ context [
 	    images/add-obj image-name image
 
 	]
+	; Handle functions
+	fun-interp-list: unique/skip fun-interp-list 2
+	foreach [name data ] fun-interp-list [
+	    fun: doc/make-obj pdf-lib/function-interp-dict! data
+	]
+	    
 
 	; Handle patterns
 	shadings: doc/make-obj pdf-lib/shadings-dict!  []
@@ -1483,4 +1524,3 @@ context [
     ]
     
 ] 
-
