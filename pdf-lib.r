@@ -975,6 +975,45 @@ context [
 	 To see an example of how to use the object, see pdf-lib/test as an example}
     ][
 	context [
+	    same-func?: func [
+		{Compares the content of functions a and b, if the text are the same it will return true}
+		:a [function!]
+		:b [function!]
+	    ][
+		all [
+		    (second a ) = (second b)
+		    (third a )  = (third b)
+		]
+	    ]
+
+	    like-object?: func [
+		{Returns true if all values are the same. When comparing referenced objects they are 
+		 supposed to be like if references the same object}
+		 a [object!]
+		 b [object!]
+		 /local a-names b-names
+	    ][
+		a-names: next first a
+		b-names: next first b
+		unless a-names =  b-names [ return false ]
+		foreach name a-names [
+		    a-val: get in a name
+		    b-val: get in b name
+		    unless (type? :a-val) = type? :b-val [ return false ]
+		    switch/default type? :a-val [
+			object! [ 
+			    unless same? a-val :b-val [ return false ]
+			]
+			function! [
+			    unless same-func? a-val b-val [ return false ]
+			]
+		    ] [
+			unless :a-val = :b-val [ return false ]
+		    ]
+		]
+		true
+	    ]
+
 
 	    obj-list: copy []
 	    
@@ -1033,12 +1072,18 @@ context [
 	    ]
 
 	    make-obj: func [
+		{Makes the object and then checks if an identical object already exists in the 
+		list of objects. If it does, then return that other, else return the one just created}
 		obj [object!] {Object prototype, decides how the specifiation should be treated}
 		specification [block!] {A list of something that rather liberally will get parsed}
 		/root {Mark that this object is the file's catalog to be referenced as root}
 		/local o
 	    ][
-		append obj-list o: make obj [ ]
+		o: make obj [ ]
+		foreach x obj-list [
+		    if  like-object? x o [ return x ]
+		]
+		append obj-list o
 		o/init specification
 		if root [ set-root o ]
 		o
