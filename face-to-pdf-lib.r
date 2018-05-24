@@ -90,6 +90,7 @@ context [
 	]
     ]
 
+
     matrix-mult: func [
 	{Multiply m1 with m2 given that m1 is given as a list of 
 	     [ m1/1 m1/3 m1/5 ]
@@ -359,43 +360,11 @@ context [
 	to-word str
     ]
 
-    font-list: copy []
-    image-list: copy []
 
     shading-triangles-list: copy [ ]
 
 
-    register-font: func [ name /local tmp ][
-	if object? name [
-	    either all [ string? name/name find name/name "/" ][
-		name: copy/part tmp: next find/last name/name "/" any [ find/last tmp "." tail tmp ]
-	    ][
-		name: name/name
-	    ]
-	]
-	append font-list name
-	to-refinement name
-    ]
 
-    register-image: func [ image [image!]
-	/local name
-    ] [
-	name: create-unique-name image
-	either find/skip image-list name 2 [
-	    dbg: name 
-	][
-	    repend  image-list [name image]
-	]
-	name
-    ]
-
-    register-shading-triangle: func [ stream /local name ][
-	name: create-unique-name/pre stream "T-"
-	unless find/skip shading-triangles-list name 2 [
-	    repend shading-triangles-list [ name stream ]
-	]
-	name
-    ]
 
     shading-axial-list: copy []
     register-shading-axial: func [ data /local name ][
@@ -674,19 +643,19 @@ context [
 			add-path reduce [ p1 p2 - p1 're ] paint-path
 		    )
 	    ]
-	    use [ str p colors ][
+	    use [ stream p colors ][
 		triangle: [
 		    'triangle
 		    copy p 3 pair!  copy colors 3 tuple! opt decimal!
 		    (
-			str: reduce [
+			stream: reduce [
 			    0 p/1 colors/1 
 			    0 p/2 colors/2
 			    0 p/3 colors/3
 			]
 
-			name: register-shading-triangle str
-			;add-to-patterns name
+			name: to-be-page/register-shading-triangle stream
+
 			append strea compose [
 			    (to-refinement name ) sh
 			]
@@ -850,7 +819,7 @@ context [
 			[ repend strea [ current-pen/1  'rg ] ]
 			[ set-current-env ]
 		    repend strea [
-			register-font current-font current-font/size 'Tf
+			to-be-page/register-font current-font current-font/size 'Tf
 			render-mode 'Tr
 			pair/x pair/y 
 			'Td
@@ -880,8 +849,7 @@ context [
 			] (
 			    p: point-list
 			    if 4 <= length? p [
-				warning "Cannot handle four point image transformation in draw dialect"
-				warning "Ignoring last point"
+				warning "Cannot handle four point image transformation in draw dialect. Ignoring last point"
 			    ]
 			    case [ 
 				not img
@@ -931,7 +899,7 @@ context [
 				    M/3: p/1/x - M/5
 				    M/4: p/1/y - M/6
 
-				    reference: to-refinement register-image img
+				    reference: to-refinement to-be-page/register-image img
 				    append strea compose [
 					q
 					    (M) cm 
@@ -1173,6 +1141,7 @@ context [
 
     parse-face: func [
 	face [object!]
+	to-be-page [ object! ] {Object containing the objects for the pdf-documents and list of coming resources.}
 	/local strea offset n  x y pos edge pane line-info
 	    reference p save-current-font
     ][
@@ -1187,7 +1156,7 @@ context [
 	    ]
 	]
 	if image? face/image [
-	    reference: to-refinement register-image face/image
+	    reference: to-refinement to-be-page/register-image face/image
 	    case [
 		find face/effect 'fit [
 		    repend strea [
@@ -1248,7 +1217,7 @@ context [
 			
 			repeat i 3 [
 			    repeat j 3 [
-				ref: to-refinement register-image copy/part
+				ref: to-refinement to-be-page/register-image copy/part
 				    at face/image as-pair x-is/:i y-is/:j
 				    as-pair x-isize/:i y-isize/:j
 				repend strea [
@@ -1341,7 +1310,7 @@ context [
 	    n: 0
 	    current-font: face/font 
 	    append strea compose [
-		BT (register-font current-font) (face/font/size) Tf
+		BT (to-be-page/register-font current-font) (face/font/size) Tf
 	    ]
 	    while [  textinfo face line-info n ][
 		edge: either all [ face/edge face/edge/size ][ 1x1 * face/edge/size ] [ 0x0 ]
@@ -1412,7 +1381,7 @@ context [
 			    current-matrix: matrix-mult current-matrix mtrx
 			]
 			save-current-font: current-font
-			append strea parse-face p
+			append strea parse-face p to-be-page
 			current-font: save-current-font
 			append strea 'Q
 			current-matrix: matrix-pop
@@ -1431,8 +1400,9 @@ context [
 	    f-l
 	    fonts
 	    font-replacement
+	    font-list
 	    images
-	    image
+	    image image-list
 	    page
 	    pages resource
 	    doc
@@ -1440,11 +1410,48 @@ context [
 	    graph   alpha-name strea
     ][
 	; Initialize
-	doc: pdf-lib/prepare-pdf
-	
-	font-list: copy []
-	image-list: copy []
-	
+
+	to-be-page: make object! [
+	    doc: pdf-lib/prepare-pdf
+	    fonts: copy []
+	    images: copy []
+	    shades: copy []
+	    shading-triangles: copy []
+
+	    register-font: func [ name /local tmp ][
+		if object? name [
+		    either all [ string? name/name find name/name "/" ][
+			name: copy/part tmp: next find/last name/name "/" any [ find/last tmp "." tail tmp ]
+		    ][
+			name: name/name
+		    ]
+		]
+		append fonts name
+		to-refinement name
+	    ]
+
+	    register-image: func [ image [image!]
+		/local name
+	    ] [
+		name: create-unique-name image
+		either find/skip images name 2 [
+		    dbg: name 
+		][
+		    repend  images [name image]
+		]
+		name
+	    ]
+	    register-shading-triangle: func [ stream /local name ][
+		name: create-unique-name/pre stream "T-"
+		unless find/skip shading-triangles name 2 [
+		    repend shading-triangles [ name stream ]
+		]
+		name
+	    ]
+
+	]
+	doc: to-be-page/doc
+
 	; Make content
 	strea: copy []
 	repend strea [
@@ -1452,59 +1459,60 @@ context [
 	    'cm
 	]
 
-	append strea parse-face face
+	append strea parse-face face to-be-page
+	
 	graph: doc/make-obj pdf-lib/base-stream! strea
 
 	; Fonts
-	fonts: doc/make-obj pdf-lib/fonts-dict! []
-	
-	font-list:  unique font-list
-	font-replacement: copy []
-	foreach f font-list [ append font-replacement translate-fontname f ]
-	f-l: copy []
-	foreach f unique font-replacement [ repend f-l [ f doc/make-obj pdf-lib/font-dict! reduce [ f ]] ]
-	loop  length? font-list [
-	    fonts/add-obj  first+ font-list   select f-l first+ font-replacement
+	fonts: none
+	unless empty? to-be-page/fonts [
+	    fonts: doc/make-obj pdf-lib/fonts-dict! []
+	    
+	    font-list:  unique to-be-page/fonts
+	    font-replacement: copy []
+	    foreach f font-list [ append font-replacement translate-fontname f ]
+	    f-l: copy []
+	    foreach f unique font-replacement [ repend f-l [ f doc/make-obj pdf-lib/font-dict! reduce [ f ]] ]
+	    loop  length? font-list [
+		fonts/add-obj  first+ font-list   select f-l first+ font-replacement
+	    ]
 	]
 
 	; Handle images
-	images: doc/make-obj pdf-lib/XObjects-dict! [ ]
-	image-list: unique/skip  image-list 2
-	foreach [image-name image-obj ]  image-list [
+	images: none
+	unless empty? to-be-page/images [
+	    images: doc/make-obj pdf-lib/XObjects-dict! [ ]
+	    image-list: unique/skip  to-be-page/images 2
+	    foreach [image-name image-obj ]  image-list [
 
-	    either has-alpha image-obj [
-		alpha: doc/make-obj pdf-lib/image-alpha-stream! [ image-obj ]
-		alpha-name: to-word join "A" image-name
-		images/add-obj alpha-name alpha
-	    ][
-		alpha: none
+		either has-alpha image-obj [
+		    alpha: doc/make-obj pdf-lib/image-alpha-stream! [ image-obj ]
+		    alpha-name: to-word join "A" image-name
+		    images/add-obj alpha-name alpha
+		][
+		    alpha: none
+		]
+
+		image: doc/make-obj pdf-lib/image-rgb-stream! [ image-obj alpha ]
+		images/add-obj image-name image
+
 	    ]
-
-	    image: doc/make-obj pdf-lib/image-rgb-stream! [ image-obj alpha ]
-	    images/add-obj image-name image
-
 	]
-	; Handle functions
-	fun-interp-list: unique/skip fun-interp-list 2
-	foreach [name data ] fun-interp-list [
-	    fun: doc/make-obj pdf-lib/function-interp-dict! data
-	]
-	    
 
 	; Handle patterns
 	shadings: doc/make-obj pdf-lib/shadings-dict!  []
 
 	; Triangles
-	foreach [name shade] shading-triangles-list [
+	foreach [name shade] to-be-page/shading-triangles [
 	    shade-obj: doc/make-obj pdf-lib/shading-triangles-dict! shade
 	    shadings/add-obj name shade-obj
 	]
 
 	; Register resources
 	resource: doc/make-obj pdf-lib/resources-dict! [  ]
-	unless empty? images/value-list [ resource/XObject: images ]
-	unless empty? fonts/value-list [ resource/Font: fonts ]
-	unless empty? shadings/value-list [ resource/Shading: shadings ]
+	if images [ resource/XObject: images ]
+	if fonts [ resource/Font: fonts ]
+	if shadings [ resource/Shading: shadings ]
 
 	; Create page
 	page: doc/make-obj pdf-lib/page-dict! [ graph resource ]
