@@ -981,8 +981,8 @@ context [
 		:b [function!]
 	    ][
 		all [
-		    (second a ) = (second b)
-		    (third a )  = (third b)
+		    (second :a ) = (second :b)
+		    (third :a )  = (third :b)
 		]
 	    ]
 
@@ -993,24 +993,42 @@ context [
 		 b [object!]
 		 /local a-names b-names
 	    ][
+		if same? a b [ return true ]
 		a-names: next first a
 		b-names: next first b
-		unless a-names =  b-names [ return false ]
+		unless a-names =  b-names [ print "not same fields" return false ]
 		foreach name a-names [
-		    a-val: get in a name
-		    b-val: get in b name
-		    unless (type? :a-val) = type? :b-val [ return false ]
-		    switch/default type? :a-val [
-			object! [ 
-			    unless same? a-val :b-val [ return false ]
+		    if not find [ stream-string obj-position string ] name [
+			a-val: get in a name
+			b-val: get in b name
+			unless (type? :a-val) = type? :b-val [ print [ "field " name " differs" ] return false ]
+			switch/default type? :a-val compose [
+			    (block!) [
+				unless :a-val = :b-val [
+				    unless (length? a-val) = length? b-val [
+					print [ "field" name "Not same block!"]
+					return false
+				    ]
+				    loop length? a-val [
+					unless like-object? first+ a-val first+ b-val [
+					    print ["in block " name " differs" ]
+					    return false
+					]
+				    ]
+				]
+			    ]
+			    (object!) [ 
+				unless same? a-val :b-val [ print [ "objects " name " differs" ] return false ]
+			    ]
+			    (function!) [
+				unless same-func? a-val b-val [ print [ "functions " name " differs" ] return false ]
+			    ]
+			] [
+			    unless :a-val = :b-val [ print [ name " differs" ] return false ]
 			]
-			function! [
-			    unless same-func? a-val b-val [ return false ]
-			]
-		    ] [
-			unless :a-val = :b-val [ return false ]
 		    ]
 		]
+		print "Same"
 		true
 	    ]
 
@@ -1081,7 +1099,7 @@ context [
 	    ][
 		o: make obj [ ]
 		foreach x obj-list [
-		    if  like-object? x o [ return x ]
+		    if  like-object? x o [ print "Found similar object" return x ]
 		]
 		append obj-list o
 		o/init specification

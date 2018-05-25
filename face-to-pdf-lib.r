@@ -1414,7 +1414,7 @@ context [
 	to-be-page: make object! [
 	    doc: pdf-lib/prepare-pdf
 	    fonts: copy []
-	    images: copy []
+	    ;images: copy []
 	    shades: copy []
 	    shading-triangles: copy []
 
@@ -1430,17 +1430,26 @@ context [
 		to-refinement name
 	    ]
 
+	    images: doc/make-obj pdf-lib/XObjects-dict! [ ]
+
 	    register-image: func [ image [image!]
 		/local name
 	    ] [
 		name: create-unique-name image
-		either find/skip images name 2 [
-		    dbg: name 
+
+		either has-alpha image [
+		    alpha: doc/make-obj pdf-lib/image-alpha-stream! [ image ]
+		    alpha-name: to-word join "A" name
+		    images/add-obj alpha-name alpha
 		][
-		    repend  images [name image]
+		    alpha: none
 		]
+
+		image-obj: doc/make-obj pdf-lib/image-rgb-stream! [ image alpha ]
+		images/add-obj name image-obj
 		name
 	    ]
+
 	    register-shading-triangle: func [ stream /local name ][
 		name: create-unique-name/pre stream "T-"
 		unless find/skip shading-triangles name 2 [
@@ -1478,27 +1487,6 @@ context [
 	    ]
 	]
 
-	; Handle images
-	images: none
-	unless empty? to-be-page/images [
-	    images: doc/make-obj pdf-lib/XObjects-dict! [ ]
-	    image-list: unique/skip  to-be-page/images 2
-	    foreach [image-name image-obj ]  image-list [
-
-		either has-alpha image-obj [
-		    alpha: doc/make-obj pdf-lib/image-alpha-stream! [ image-obj ]
-		    alpha-name: to-word join "A" image-name
-		    images/add-obj alpha-name alpha
-		][
-		    alpha: none
-		]
-
-		image: doc/make-obj pdf-lib/image-rgb-stream! [ image-obj alpha ]
-		images/add-obj image-name image
-
-	    ]
-	]
-
 	; Handle patterns
 	shadings: doc/make-obj pdf-lib/shadings-dict!  []
 
@@ -1510,7 +1498,8 @@ context [
 
 	; Register resources
 	resource: doc/make-obj pdf-lib/resources-dict! [  ]
-	if images [ resource/XObject: images ]
+? to-be-page/images/value-list
+	if to-be-page/images [ resource/XObject: to-be-page/images ]
 	if fonts [ resource/Font: fonts ]
 	if shadings [ resource/Shading: shadings ]
 
@@ -1524,6 +1513,7 @@ context [
 	; Creeate the object holding pages together
 	doc/make-obj/root pdf-lib/catalog-dict! [ pages ]
 	
+	dbg: to-be-page
 	doc/to-string
     ]
 
