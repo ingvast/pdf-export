@@ -1411,7 +1411,7 @@ context [
     ][
 	; Initialize
 
-	to-be-page: make object! [
+	dbg: to-be-page: make object! [
 	    doc: pdf-lib/prepare-pdf
 	    fonts: copy []
 	    ;images: copy []
@@ -1498,7 +1498,6 @@ context [
 
 	; Register resources
 	resource: doc/make-obj pdf-lib/resources-dict! [  ]
-? to-be-page/images/value-list
 	if to-be-page/images [ resource/XObject: to-be-page/images ]
 	if fonts [ resource/Font: fonts ]
 	if shadings [ resource/Shading: shadings ]
@@ -1513,7 +1512,6 @@ context [
 	; Creeate the object holding pages together
 	doc/make-obj/root pdf-lib/catalog-dict! [ pages ]
 	
-	dbg: to-be-page
 	doc/to-string
     ]
 

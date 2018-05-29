@@ -235,9 +235,12 @@ if error? err: try [
     write %geometries-II.pdf lib/face-to-pdf f
     none
 ] [
+    trace off
     err: disarm err
     ? err
+    make error! {Error somewhere}
 ]
+print "hit escape to get prompt"
 
 
 wait none

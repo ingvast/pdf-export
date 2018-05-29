@@ -463,7 +463,10 @@ context [
 	check: does [ true ]
 	value-list: []
 	add-obj: func [ name obj ][
-	    append value-list reduce [ name obj ]
+	    unless find value-list name [
+		append value-list reduce [ name obj ]
+
+	    ]
 	]
 	init: func [ spec ][
 	    unless block? spec [ spec: reduce [ spec ] ]
@@ -975,64 +978,54 @@ context [
 	 To see an example of how to use the object, see pdf-lib/test as an example}
     ][
 	context [
-	    same-func?: func [
-		{Compares the content of functions a and b, if the text are the same it will return true}
-		:a [function!]
-		:b [function!]
-	    ][
-		all [
-		    (second :a ) = (second :b)
-		    (third :a )  = (third :b)
-		]
-	    ]
-
-	    like-object?: func [
+	    like?: func [
 		{Returns true if all values are the same. When comparing referenced objects they are 
-		 supposed to be like if references the same object}
-		 a [object!]
-		 b [object!]
-		 /local a-names b-names
+		 supposed to be like if references the same object.
+		 Traverses all blocks.}
+		 a 
+		 b
+		 /local a-names b-names a-val b-val a-pos b-pos x
 	    ][
-		if same? a b [ return true ]
-		a-names: next first a
-		b-names: next first b
-		unless a-names =  b-names [ print "not same fields" return false ]
-		foreach name a-names [
-		    if not find [ stream-string obj-position string ] name [
-			a-val: get in a name
-			b-val: get in b name
-			unless (type? :a-val) = type? :b-val [ print [ "field " name " differs" ] return false ]
-			switch/default type? :a-val compose [
-			    (block!) [
-				unless :a-val = :b-val [
-				    unless (length? a-val) = length? b-val [
-					print [ "field" name "Not same block!"]
-					return false
-				    ]
-				    loop length? a-val [
-					unless like-object? first+ a-val first+ b-val [
-					    print ["in block " name " differs" ]
-					    return false
-					]
-				    ]
+		if :a == :b [ return true ]
+		unless (type? :a) = type? :b [ return false ]
+		unless block? :a [ a: reduce [ :a ]  b: reduce [ :b ] ]
+
+		loop length? a [
+		    a-val: first+ a
+		    b-val: first+ b
+		    unless (type? :a-val) = type? :b-val [ return false ]
+		    switch/default type? :a-val compose [
+			(object!) [
+			    a-val: third :a-val
+			    b-val: third :b-val
+			    foreach x [ stream-string: obj-position: string: ] [
+				if a-pos: find/skip a-val x 2 [
+				    remove/part a-pos 2
+				]
+				if b-pos: find/skip b-val x 2 [
+				    remove/part b-pos 2
 				]
 			    ]
-			    (object!) [ 
-				unless same? a-val :b-val [ print [ "objects " name " differs" ] return false ]
-			    ]
-			    (function!) [
-				unless same-func? a-val b-val [ print [ "functions " name " differs" ] return false ]
-			    ]
-			] [
-			    unless :a-val = :b-val [ print [ name " differs" ] return false ]
+			    unless like? a-val b-val [ return false ]
+			]
+			(block!) [
+			    unless like? :a-val :b-val [ return false ]
+			]
+			(function!) [
+			    unless all [
+				(second :a-val ) = (second :b-val)
+				like? (third :a-val )  (third :b-val)
+			    ][ print [ "functions differs" ]  return false ]
+			]
+		    ][
+			unless :a-val = :b-val [
+			    return false
 			]
 		    ]
 		]
-		print "Same"
 		true
 	    ]
-
-
+			
 	    obj-list: copy []
 	    
 	    add-obj: func [ obj ][
@@ -1098,12 +1091,13 @@ context [
 		/local o
 	    ][
 		o: make obj [ ]
-		foreach x obj-list [
-		    if  like-object? x o [ print "Found similar object" return x ]
-		]
-		append obj-list o
 		o/init specification
 		if root [ set-root o ]
+		print "Comparing objects"
+		foreach x obj-list [
+		    if  like? x o [ print "Found similar object" return x ]
+		]
+		append obj-list o
 		o
 	    ]
 	]
