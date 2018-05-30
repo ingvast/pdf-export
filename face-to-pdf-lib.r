@@ -1103,15 +1103,16 @@ context [
 
     used-fonts: copy []
     font-translations: [
-	"helvetica"		Helvetica
-	"arial"		Helvetica
-	"font-sans-serif"	Helvetica
-	"FreeSans"		Helvetica
-	"Courier"		Courier
-	"font-fixed"	Courier
-	"Times"		Times-Roman
-	"Times-Roman"	Times-Roman
-	"font-serif"	Times-Roman
+	"helvetica"		    Helvetica
+	"arial"			    Helvetica
+	"font-sans-serif"	    Helvetica
+	"FreeSans"		    Helvetica
+	"LiberationSans-Regular"    Helvetica
+	"Courier"		    Courier
+	"font-fixed"		    Courier
+	"Times"			    Times-Roman
+	"Times-Roman"		    Times-Roman
+	"font-serif"		    Times-Roman
     ]
 
 
@@ -1412,13 +1413,16 @@ context [
 	; Initialize
 
 	dbg: to-be-page: make object! [
-	    doc: pdf-lib/prepare-pdf
-	    fonts: copy []
-	    ;images: copy []
-	    shades: copy []
-	    shading-triangles: copy []
 
-	    register-font: func [ name /local tmp ][
+	    doc: pdf-lib/prepare-pdf
+
+	    fonts: copy []
+
+	    fonts: doc/make-obj pdf-lib/fonts-dict! []
+	    register-font: func [
+		    name
+		    /local tmp font-obj repl-name
+	    ][
 		if object? name [
 		    either all [ string? name/name find name/name "/" ][
 			name: copy/part tmp: next find/last name/name "/" any [ find/last tmp "." tail tmp ]
@@ -1426,7 +1430,9 @@ context [
 			name: name/name
 		    ]
 		]
-		append fonts name
+		repl-name: translate-fontname name
+		font-obj: doc/make-obj pdf-lib/font-dict! reduce [ repl-name ]
+		fonts/add-obj name  font-obj
 		to-refinement name
 	    ]
 
@@ -1476,28 +1482,13 @@ context [
 	
 	graph: doc/make-obj pdf-lib/base-stream! strea
 
-	; Fonts
-	fonts: none
-	unless empty? to-be-page/fonts [
-	    fonts: doc/make-obj pdf-lib/fonts-dict! []
-	    
-	    font-list:  unique to-be-page/fonts
-	    font-replacement: copy []
-	    foreach f font-list [ append font-replacement translate-fontname f ]
-	    f-l: copy []
-	    foreach f unique font-replacement [ repend f-l [ f doc/make-obj pdf-lib/font-dict! reduce [ f ]] ]
-	    loop  length? font-list [
-		fonts/add-obj  first+ font-list   select f-l first+ font-replacement
-	    ]
-	]
 
 
 	; Register resources
 	resource: doc/make-obj pdf-lib/resources-dict! [  ]
 	if to-be-page/images [ resource/XObject: to-be-page/images ]
 	if to-be-page/shadings [ resource/Shading: to-be-page/shadings ]
-
-	if fonts [ resource/Font: fonts ]
+	if to-be-page/fonts [ resource/Font: to-be-page/fonts ]
 
 	; Create page
 	page: doc/make-obj pdf-lib/page-dict! [ graph resource ]
