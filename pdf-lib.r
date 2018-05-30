@@ -981,7 +981,7 @@ context [
 	    like?: func [
 		{Returns true if all values are the same. When comparing referenced objects they are 
 		 supposed to be like if references the same object.
-		 Traverses all blocks.}
+		 Traverses all blocks recursevely to all levels.}
 		 a 
 		 b
 		 /local a-names b-names a-val b-val a-pos b-pos x
@@ -1015,7 +1015,7 @@ context [
 			    unless all [
 				(second :a-val ) = (second :b-val)
 				like? (third :a-val )  (third :b-val)
-			    ][ print [ "functions differs" ]  return false ]
+			    ][ return false ]
 			]
 		    ][
 			unless :a-val = :b-val [
@@ -1093,9 +1093,8 @@ context [
 		o: make obj [ ]
 		o/init specification
 		if root [ set-root o ]
-		print "Comparing objects"
 		foreach x obj-list [
-		    if  like? x o [ print "Found similar object" return x ]
+		    if  like? x o [ return x ]
 		]
 		append obj-list o
 		o

@@ -1433,7 +1433,7 @@ context [
 	    images: doc/make-obj pdf-lib/XObjects-dict! [ ]
 
 	    register-image: func [ image [image!]
-		/local name
+		/local name alpha alpha-name imaveg-obj
 	    ] [
 		name: create-unique-name image
 
@@ -1450,11 +1450,15 @@ context [
 		name
 	    ]
 
-	    register-shading-triangle: func [ stream /local name ][
+	    shadings: doc/make-obj pdf-lib/shadings-dict!  []
+
+	    register-shading-triangle: func [
+		    stream
+		    /local name shade-obj
+	    ][
 		name: create-unique-name/pre stream "T-"
-		unless find/skip shading-triangles name 2 [
-		    repend shading-triangles [ name stream ]
-		]
+		shade-obj: doc/make-obj pdf-lib/shading-triangles-dict! stream
+		shadings/add-obj name shade-obj
 		name
 	    ]
 
@@ -1487,20 +1491,13 @@ context [
 	    ]
 	]
 
-	; Handle patterns
-	shadings: doc/make-obj pdf-lib/shadings-dict!  []
-
-	; Triangles
-	foreach [name shade] to-be-page/shading-triangles [
-	    shade-obj: doc/make-obj pdf-lib/shading-triangles-dict! shade
-	    shadings/add-obj name shade-obj
-	]
 
 	; Register resources
 	resource: doc/make-obj pdf-lib/resources-dict! [  ]
 	if to-be-page/images [ resource/XObject: to-be-page/images ]
+	if to-be-page/shadings [ resource/Shading: to-be-page/shadings ]
+
 	if fonts [ resource/Font: fonts ]
-	if shadings [ resource/Shading: shadings ]
 
 	; Create page
 	page: doc/make-obj pdf-lib/page-dict! [ graph resource ]

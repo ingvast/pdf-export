@@ -53,6 +53,8 @@ dr8: [
     triangle 12x12 120x80 80x130 green red blue
     pen none
     triangle 80x10 30x22 100x30 blue white magenta
+    translate 20x0
+    triangle 80x10 30x22 100x30 blue white magenta
 ]
 puppy: load %/usr/share/pixmaps/faces/puppy.jpg
 cat-eye: load %/usr/share/pixmaps/faces/cat-eye.jpg
