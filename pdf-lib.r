@@ -687,8 +687,19 @@ context [
 	Shading: 'required  ; An object such as shading-axial-dict!
 	Matrix: none
 	ExtGState: none
-	init: func [ spec ][
-	    Shading: first reduce spec
+	init: func [
+	    spec
+	    /local p mtrx
+	][
+	    parse reduce spec [
+		any [ 
+		    [ set p object! ( Shading: p ) ]
+		    |
+		    [ p: set mtrx block! :p into [ 6 integer! any skip ] 
+			(Matrix: copy/part mtrx 6)
+		    ]
+		]
+	    ]
 	]
     ]
 

@@ -361,19 +361,8 @@ context [
     ]
 
 
-    shading-triangles-list: copy [ ]
 
 
-
-
-    shading-axial-list: copy []
-    register-shading-axial: func [ data /local name ][
-	name: create-unique-name/pre data "SA-"
-	unless find/skip shading-axial-list name 2 [
-	    repend shading-axial-list [ name data ]
-	]
-	name
-    ]
 
     shading-radial-list: copy []
     register-shading-radial: func [ data /local name ][
@@ -383,25 +372,6 @@ context [
 	]
 	name
     ]
-
-    shading-pattern-list: copy []
-    register-shading-pattern: func [ data /local name  ][
-	name: create-unique-name/pre data "SP-"
-	unless find/skip shading-pattern-list name 2 [
-	    repend shading-pattern-list [ name data ]
-	]
-	name
-    ]
-
-    fun-interp-list: copy []
-    register-fun-interp: func [ data /local name  ][
-	name: create-unique-name/pre data "F-"
-	unless find/skip fun-interp-list name 2 [
-	    repend fun-interp-list [ name data ]
-	]
-	name
-    ]
-
 
     has-alpha: func [ 
 	{Returns none if there is a alpha value not zero}
@@ -953,52 +923,52 @@ context [
 			set grad-scale-y number!
 			copy grad-colors some tuple!
 			(
+			    grad-angle: negate grad-angle
+			    print "Found gradient"
 			    ; Make the shading at grad-offset
 			    ; Set the shading marix to current-matrix and modify it with scale-xy
 			    ; Set the current pen value to the shading name
 
-				fun-name: register-fun-interp compose [
-				    BitsPerSample: 8
-				    one-input-dimension 3 (reduce [ join reduce [ color ]  grad-colors ] )
-				]
+			    fun: to-be-page/doc/make-obj pdf-lib/function-interp-dict! compose [
+				BitsPerSample: 8
+				one-input-dimension 3 (reduce [ join reduce [ color ]  grad-colors ] )
+			    ]
 
-				switch grad-type [
-				    linear [
-					shade-name: register-shading-axial compose [
-					    Fuction: (to-refinement fun-name )
-					    Domain: [ 0 1 ]
-					    Extend: [ true true ]
-					    from-to
-						(grad-offset)
-						(
-						    (as-pair grad-stop-rng * cosine grad-angle
-							   grad-stop-rng * sine grad-angle ) + grad-offset
-						)
-					]
-				    ]
-				    radial [
-					    shade-name: register-shading-radial compose [
-						Fuction: (to-refinement fun-name )
-						Domain: [ 0 1 ]
-						Extend [ true true ]
-						from-to (
-						    grad-offset
-						    (as-pair grad-stop-rng * cosine grad-angle
-						     grad-stop-rng * sine grad-angle ) + grad-offset
-						)
-					    ]
+			    switch grad-type [
+				linear [
+				    shade: to-be-page/doc/make-obj pdf-lib/shading-axial-dict! [
+					Function: fun
+					Domain: [ 0 1 ]
+					Extend: [ true true ]
+					from-to
+					    grad-offset
+					    (as-pair grad-stop-rng * cosine grad-angle
+						   grad-stop-rng * sine grad-angle ) + grad-offset
+				    
 				    ]
 				]
-
-				pattern-name:  register-shading-pattern reduce [ 
-				     current-matrix to-refinement shade-name
+				radial [
+				    shade: to-be-page/doc/make-obj pdf-lib/shading-radial-dict! [
+					Function: fun
+					Domain: [ 0 1 ]
+					Extend: [ true true ]
+					from grad-offset grad-start-rng
+					to grad-offset grad-stop-rng
+				    ]
 				]
+			    ]
+			    shade-name: create-unique-name/pre shade "SH-"
 
-				current-fill: compose [
-				    /Pattern cs
-				    (to-refinement pattern-name)  scn
-				]
-				append strea current-fill
+			    pattern-name: to-be-page/register-pattern [ 
+				 shade
+				 current-matrix to-refinement shade-name
+			    ]
+
+			    current-fill: compose [
+				/Pattern cs
+				(to-refinement pattern-name)  scn
+			    ]
+			    append strea current-fill
 			)
 		    ]
 		]
@@ -1468,6 +1438,17 @@ context [
 		name
 	    ]
 
+	    patterns: doc/make-obj pdf-lib/patterns-dict! []
+	    register-pattern: func [
+		def
+		/local name pattern-obj
+	    ][
+		pattern-obj: doc/make-obj pdf-lib/shading-pattern-dict! def
+	 	name: create-unique-name/pre pattern-obj "PA-"
+		patterns/add-obj name pattern-obj
+		name
+	    ]
+
 	]
 	doc: to-be-page/doc
 
@@ -1488,6 +1469,7 @@ context [
 	resource: doc/make-obj pdf-lib/resources-dict! [  ]
 	if to-be-page/images [ resource/XObject: to-be-page/images ]
 	if to-be-page/shadings [ resource/Shading: to-be-page/shadings ]
+	if to-be-page/patterns [ resource/Pattern: to-be-page/patterns ]
 	if to-be-page/fonts [ resource/Font: to-be-page/fonts ]
 
 	; Create page
@@ -1506,5 +1488,26 @@ context [
     if system/script/args [
 	export system/script/args 
     ]
+
+
+
+    test-pattern: does [
+	view/new layout [ b: box white 400x400 effect[
+	    draw [
+		pen none
+		fill-pen yellow linear 100x200 0 50  5 1 1  red white red pink blue
+		box 0x0 400x20
+		fill-pen yellow linear 100x200 0 50  5 2 1  red white red pink blue
+		box 0x20 400x40
+		fill-pen yellow radial 50x100 0 50  0 1 1  red white red pink blue
+		box 0x40 400x400
+	    ]
+	    key #"q" [unview]
+	]]
+	write %test-pattern.pdf face-to-pdf b
+	wait none
+    ]
+	
+
     
 ] 
