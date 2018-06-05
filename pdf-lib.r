@@ -695,8 +695,8 @@ context [
 		any [ 
 		    [ set p object! ( Shading: p ) ]
 		    |
-		    [ p: set mtrx block! :p into [ 6 integer! any skip ] 
-			(Matrix: copy/part mtrx 6)
+		    [ p: set mtrx  block!  :p into [ 6 number! any skip ] 
+			(Matrix: copy/part mtrx 6 )
 		    ]
 		]
 	    ]

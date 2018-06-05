@@ -32,6 +32,7 @@ REBOL [
 	* Handle gradients
 	* Make use of font given. (Write font data to pdf)
 	* Alpha values for general graphic
+	* Handle rest of gradients beside radial and axial
     }
     DONE: {
 	* Handle alpha values of images
@@ -178,21 +179,6 @@ context [
     foreach x rebol-draw-commands [ repend rebol-draw-binding [ to-set-word x to-lit-word x ] ]
     rebol-draw-binding: context rebol-draw-binding
 
-    matrix-stack:   copy []
-    current-matrix: copy [ 1 0 0 1 0 0]
-    matrix-pop: does [
-	also 
-	    last matrix-stack
-	    (
-		remove back tail matrix-stack
-		matrix-stack 
-	    )
-    ]
-    matrix-push: func [ mtrx ][
-	append/only matrix-stack copy/part mtrx 6
-	matrix-stack
-	mtrx
-    ]
 	
 
     eval-draw: func [
@@ -714,30 +700,30 @@ context [
 		translate: [
 		    'translate set p pair! (
 			append strea mtrx: draw-commands/translate p/x p/y
-			current-matrix: matrix-mult current-matrix    mtrx
+			to-be-page/current-matrix: matrix-mult to-be-page/current-matrix    mtrx
 		    )
 		]
 		scale: [
 		    'scale copy p 2 number! (
 			append strea mtrx: draw-commands/scale/xy/around p/1 p/2 0 0
-			current-matrix: matrix-mult current-matrix    mtrx
+			to-be-page/current-matrix: matrix-mult to-be-page/current-matrix    mtrx
 		    )
 		]
 		rotate: [
 		    'rotate set p number! (
 			append strea mtrx: draw-commands/rotate 0 0 p
-			current-matrix: matrix-mult current-matrix    mtrx
+			to-be-page/current-matrix: matrix-mult to-be-page/current-matrix    mtrx
 		    )
 		]
 		skew: [
 		    'skew set p number! (
 			append strea mtrx: draw-commands/skew p
-			current-matrix: matrix-mult current-matrix    mtrx
+			to-be-page/current-matrix: matrix-mult to-be-page/current-matrix    mtrx
 		    )
 		]
 		matrix: [
 		    'matrix set mtrx block! (
-			current-matrix: matrix-mult current-matrix  mtrx
+			to-be-page/current-matrix: matrix-mult to-be-page/current-matrix  mtrx
 			append strea draw-commands/matrix mtrx
 		    )
 		]
@@ -745,7 +731,7 @@ context [
 	    push: [
 		'push set cmds block! 
 		(
-		    matrix-push current-matrix
+		    to-be-page/matrix-push to-be-page/current-matrix
 
 		    repend strea [ 'q  ]
 
@@ -755,7 +741,7 @@ context [
 		    repend strea [ 'Q  ]
 
 		    set-current-env
-		    current-matrix: matrix-pop
+		    to-be-page/current-matrix: to-be-page/matrix-pop
 		)
 	    ]
 	    text: [
@@ -903,35 +889,60 @@ context [
 		grad-scale-x grad-scale-y grad-colors
 		grad-type
 		pattern-name shade-name
+		numbers pairs colors types
 	    ][
 		fill-pen:  [
-		    'fill-pen [
-			[
-			    set color tuple! (
-				current-fill: reduce [  color  'rg ]
-				append strea current-fill
-			    ) 
-			    | 
-			    none! ( current-fill: none )
+		    'fill-pen 
+		    (
+			numbers: copy [] pairs: copy [] colors: copy [] types: copy []
+		    )
+		    any [
+			set p number! ( append numbers p )
+			|
+			set p pair! ( append pairs p )
+			|
+			set p [tuple! | none!] ( append colors p )
+			|
+			set p ['radial | 'linear]  ( append types p )
+			; [| 'diamond | 'diagonal | 'cubic | 'conic ]
+		    ]
+		    (
+			; if gradient, at least three colors is needed. All numbers
+			; default offset is at 0x0.
+			; Numbers colors and pairs can come in any order.
+			; To many of some kind are forgotten.
+			; If no color is set it is none
+			; If only color is none, the result is transparent.
+			; If colors are less than three, transparent
+			remove-each x colors [ not x ] ; Take away none
+			grad-type: types/1
+			case [
+			    0 = length? colors [
+				current-fill: none
+			    ]
+			    all [ 2 < length? colors 5 <= length? numbers not empty? types ][
+				set [
+				    grad-start-rng
+				    grad-stop-rng
+				    grad-angle
+				    grad-scale-x
+				    grad-scale-y
+				] numbers
+				grad-offset: any [ pairs/1 0x0 ]
+			    ]
+			    true [
+				current-fill: reduce [ first colors 'rg]
+			    ]
 			]
-			set grad-type [ 'radial | 'linear ] ; [| 'diamond | 'diagonal | 'cubic | 'conic ]
-			set grad-offset pair!
-			set grad-start-rng number!
-			set grad-stop-rng  number!
-			set grad-angle number!
-			set grad-scale-x number!
-			set grad-scale-y number!
-			copy grad-colors some tuple!
-			(
-			    grad-angle: negate grad-angle
-			    print "Found gradient"
+
+			if grad-type [
 			    ; Make the shading at grad-offset
 			    ; Set the shading marix to current-matrix and modify it with scale-xy
 			    ; Set the current pen value to the shading name
 
 			    fun: to-be-page/doc/make-obj pdf-lib/function-interp-dict! compose [
 				BitsPerSample: 8
-				one-input-dimension 3 (reduce [ join reduce [ color ]  grad-colors ] )
+				one-input-dimension 3 colors
 			    ]
 
 			    switch grad-type [
@@ -940,11 +951,8 @@ context [
 					Function: fun
 					Domain: [ 0 1 ]
 					Extend: [ true true ]
-					from-to
-					    grad-offset
-					    (as-pair grad-stop-rng * cosine grad-angle
-						   grad-stop-rng * sine grad-angle ) + grad-offset
-				    
+					from-to	as-pair grad-start-rng 0
+						as-pair grad-stop-rng 0
 				    ]
 				]
 				radial [
@@ -952,25 +960,32 @@ context [
 					Function: fun
 					Domain: [ 0 1 ]
 					Extend: [ true true ]
-					from grad-offset grad-start-rng
-					to grad-offset grad-stop-rng
+					from 0x0 grad-start-rng
+					to 0x0 grad-stop-rng
 				    ]
 				]
 			    ]
-			    shade-name: create-unique-name/pre shade "SH-"
 
 			    pattern-name: to-be-page/register-pattern [ 
 				 shade
-				 current-matrix to-refinement shade-name
+				 matrix-mult matrix-mult matrix-mult
+				    to-be-page/current-matrix
+				    reduce [ 1 0 0 1 grad-offset/x grad-offset/y ]
+				    reduce [
+					cosine grad-angle  sine grad-angle
+					negate sine grad-angle cosine grad-angle 
+					0 0
+				    ]
+				    reduce [ grad-scale-x 0 0 grad-scale-y 0 0 ]
 			    ]
 
 			    current-fill: compose [
 				/Pattern cs
 				(to-refinement pattern-name)  scn
 			    ]
-			    append strea current-fill
-			)
-		    ]
+			]
+			append strea current-fill
+		    )
 		]
 	    ]
 	    pen:  [
@@ -1222,13 +1237,13 @@ context [
 		any [
 		    'draw set p skip  (
 			if word? p [ p: get p ]
-			matrix-push current-matrix
+			to-be-page/matrix-push to-be-page/current-matrix
 			append strea compose [
 			    q
 			    (
 				also
 				    mtrx: draw-commands/translate offset/x offset/y 
-				    current-matrix: matrix-mult current-matrix mtrx
+				    to-be-page/current-matrix: matrix-mult to-be-page/current-matrix mtrx
 			    )
 				(
 
@@ -1243,7 +1258,7 @@ context [
 			    )
 			    Q    
 			]   
-			current-matrix: matrix-pop
+			to-be-page/current-matrix: to-be-page/matrix-pop
 		    )
 		    |
 		    [ 'grid 
@@ -1349,13 +1364,13 @@ context [
 			append strea 'q
 			use [ mtrx ][
 			    append strea mtrx: draw-commands/translate pos/x pos/y
-			    current-matrix: matrix-mult current-matrix mtrx
+			    to-be-page/current-matrix: matrix-mult to-be-page/current-matrix mtrx
 			]
 			save-current-font: current-font
 			append strea parse-face p to-be-page
 			current-font: save-current-font
 			append strea 'Q
-			current-matrix: matrix-pop
+			to-be-page/current-matrix: to-be-page/matrix-pop
 		    ]
 		    function? :p [ print "Transformation of functional panes not implemented" ]
 		    true	    [  print [ "Unknown object in pane!" type? :p ] ]
@@ -1383,6 +1398,21 @@ context [
 	; Initialize
 
 	dbg: to-be-page: make object! [
+	matrix-stack:   copy []
+	current-matrix: copy reduce [ 1 0 0 -1 0 face/size/y]
+	matrix-pop: does [
+	    also 
+		last matrix-stack
+		(
+		    remove back tail matrix-stack
+		    matrix-stack 
+		)
+	]
+	matrix-push: func [ mtrx ][
+	    append/only matrix-stack copy/part mtrx 6
+	    matrix-stack
+	    mtrx
+	]
 
 	    doc: pdf-lib/prepare-pdf
 
@@ -1492,15 +1522,25 @@ context [
 
 
     test-pattern: does [
-	view/new layout [ b: box white 400x400 effect[
+	view/new layout compose/deep [ b: box white 400x400 effect[
 	    draw [
+		translate 30x30
+		rotate 30
+		translate -30x-30
+
 		pen none
-		fill-pen yellow linear 100x200 0 50  5 1 1  red white red pink blue
+		fill-pen yellow linear 100x10 100 150  35 1 1  red white red pink blue
 		box 0x0 400x20
 		fill-pen yellow linear 100x200 0 50  5 2 1  red white red pink blue
 		box 0x20 400x40
-		fill-pen yellow radial 50x100 0 50  0 1 1  red white red pink blue
+		fill-pen yellow radial 100x150 0 50  45 1 2  red white red pink blue
 		box 0x40 400x400
+		line-width 5
+		pen brown line (random 400x400) ( random 400x400)
+		box 30x30 200x200
+		circle 30x30 10
+		line 30x30 200x200
+		circle 0x0 10
 	    ]
 	    key #"q" [unview]
 	]]
