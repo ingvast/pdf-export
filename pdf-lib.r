@@ -257,7 +257,7 @@ context [
     ]
 
     base-obj!: make object! [
-	header: func [ obj-list] [ reduce [ get-obj-id obj-list self 0 'obj ] ] ;Head should print the first line of object
+	header: func [ obj-list [block!] ] [ reduce [ get-obj-id obj-list self 0 'obj ] ] ;Head should print the first line of object
 	footer: "endobj"
 	init: none
 	
@@ -280,7 +280,14 @@ context [
 		]
 	    ]
 	]
-	to-string: func[ obj-list /is-stream ] [
+	to-string: func[
+	    {Converts the object to a text stream
+	    Convention that letters + and - at the beginning of variable names are not printed.
+	    (Use + for mostly upprcase and - for lowercase)
+	    That way we can handle  same name only distinguishded by capitalization.
+	    }
+	    obj-list [block!] /is-stream
+	] [
 	    string: copy ""
 	    if :header [
 		append string to-pdf-string obj-list header obj-list
@@ -289,8 +296,13 @@ context [
 	    append string "<<^/"
 	    use [ val ][
 		foreach field dict [
+		    ;TODO: get field
 		    val: get in self field
 		    if val [
+? field
+? val
+			field: system/words/to-string field
+			if find "+-" field/1  [ remove field ]
 			append string tab
 			append string to-pdf-string obj-list reduce [ to-refinement field  ]
 			append string tab
@@ -446,6 +458,40 @@ context [
 	]
     ]
 
+    ext-graphic-state-dict!: make base-obj! [
+	append dict [ Type 
+	    LW LC LJ ML
+	    D RI
+	    +OP -op		
+	    OPM
+	    Font
+	    BG BG2
+	    UCR UCR2
+	    TR TR2
+	    HT
+	    FL
+	    SM
+	    SA
+	    BM SMask
+	    +CA -ca
+	    AIS
+	    TK
+	]
+
+	Type: /ExtGState
+
+	LW: LC: LJ: ML: D: RI:
+	+OP: -op:		;+ denotes capital letters when in doubt (- small letters)
+	OPM: Font: BG: BG2: UCR: UCR2: TR: TR2:
+	HT: FL: SM: SA: BM: SMask: +CA: -ca: AIS:
+	TK: none
+
+	init: func [ spec ][
+	    spec: bind/copy spec self
+	    do spec
+	]
+    ]
+
 
     font-dict!: make base-obj! [
 	Type: /Font
@@ -498,6 +544,9 @@ context [
     ]
     XObjects-dict!: make objs-dict! [
 	Type: /XObjects
+    ]
+    extGStates-dict!: make objs-dict! [
+	Type: /ExtGState
     ]
     shadings-dict!:  make objs-dict! [
 	Type: /Shading
@@ -882,6 +931,9 @@ context [
 		    ]
 		    /Pattern [
 			Pattern: s
+		    ]
+		    /ExtGState [
+			ExtGState: s
 		    ]
 		]
 	    ]
@@ -1322,6 +1374,40 @@ context [
 	    catalog: doc/make-obj/root catalog-dict! [ pages ]
 
 	    write %shadings.pdf doc/to-string
+	    true
+	] [
+	    err: disarm err
+	    ? err
+	]
+    ]
+    test-graphic-state: func [
+    ][
+	if error? err: try [
+	    
+	    doc: prepare-pdf
+
+	    extGS: doc/make-obj ext-graphic-state-dict! [ +CA: 0.5 ]
+	    extGStates: doc/make-obj extGStates-dict! [ /half-alpha extGS ]
+
+	    resource: doc/make-obj resources-dict! [ extGStates ]
+
+	    cont: doc/make-obj base-stream! compose [
+		10 w 
+		(black) RG 
+		10x30 m 100x30 l s
+		(red) RG
+		0x0 m 100x100 l s
+		(blue) RG
+		/half-alpha gs
+		100x0 m 0x100 l s
+	    ]
+
+	    page: doc/make-obj page-dict! [ resource cont ]
+	    page/set-mediaBox [ 0 0 400 300 ]
+	    pages: doc/make-obj pages-dict! [ page ]
+	    catalog: doc/make-obj/root catalog-dict! [ pages ]
+
+	    write %test-gs.pdf doc/to-string
 	    true
 	] [
 	    err: disarm err
