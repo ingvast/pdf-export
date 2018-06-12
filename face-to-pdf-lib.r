@@ -27,24 +27,26 @@ REBOL [
 	* Fix so that images not is taken from one document to next
 	* Add possibility to have several pages.
 	* Add possiblity to set media (A4,letter,...)
-	* Clean up, hide scope
 	* Fix some compressions
-	* Handle gradients
 	* Make use of font given. (Write font data to pdf)
 	* Alpha values for general graphic
-	* Handle rest of gradients beside radial and axial
+	* Allow image for fill-pen
     }
     DONE: {
 	* Handle alpha values of images
 	* Handle images
 	* Rewrite printf routines
 	* Improve the printing of strings to do proper escapes
+	* Handle rest of gradients beside radial and axial
 	* Handle the rest of draw commands 
 	    - arrow
 	    - line patterns
 	    - fill pen patterns
 	    - line join
 	    - line cap
+    }
+    known-missing: {
+	* Do not allow stroking with image.
     }
 
     Requires: [ pdf-lib ]
@@ -347,17 +349,14 @@ context [
     ]
 
 
-
-
-
-    shading-radial-list: copy []
-    register-shading-radial: func [ data /local name ][
-	name: create-unique-name/pre data "SR-"
-	unless find/skip shading-radial-list name 2 [
-	    repend shading-radial-list [ name data ]
-	]
-	name
-    ]
+    ;shading-radial-list: copy []
+    ;register-shading-radial: func [ data /local name ][
+	;name: create-unique-name/pre data "SR-"
+	;unless find/skip shading-radial-list name 2 [
+	    ;repend shading-radial-list [ name data ]
+	;]
+	;name
+    ;]
 
     has-alpha: func [ 
 	{Returns none if there is a alpha value not zero}
@@ -890,6 +889,7 @@ context [
 		grad-type
 		pattern-name shade-name
 		numbers pairs colors types
+		alpha 
 	    ][
 		fill-pen:  [
 		    'fill-pen 
@@ -901,7 +901,9 @@ context [
 			|
 			set p pair! ( append pairs p )
 			|
-			set p [tuple! | none!] ( append colors p )
+			set p tuple! ( append colors p )
+			|
+			none!
 			|
 			set p ['radial | 'linear]  ( append types p )
 			; [| 'diamond | 'diagonal | 'cubic | 'conic ]
@@ -914,7 +916,6 @@ context [
 			; If no color is set it is none
 			; If only color is none, the result is transparent.
 			; If colors are less than three, transparent
-			remove-each x colors [ not x ] ; Take away none
 			grad-type: types/1
 			case [
 			    0 = length? colors [
@@ -931,7 +932,22 @@ context [
 				grad-offset: any [ pairs/1 0x0 ]
 			    ]
 			    true [
-				current-fill: reduce [ first colors 'rg]
+				current-fill: reduce [ to-tuple copy/part to-binary first colors 3 'rg]
+				switch/default length? first colors [
+				    3 [
+				    ]
+				    4 [ ; With alpha
+					alpha: colors/1/4 / 255
+					extGS-alpha: to-be-page/doc/make-obj
+					    pdf-lib/ext-graphic-state-dict! [
+					    -ca: alpha
+					]
+					alpha-name: to-be-page/register-extGState extGS-alpha
+					repend current-fill [ to-refinement alpha-name 'gs ]
+
+				    ]
+				] [ make error! reform [ {Tuple} p {cannot be treated as color}] ]
+				? current-fill
 			    ]
 			]
 
@@ -1479,6 +1495,15 @@ context [
 		name
 	    ]
 
+	    extGStates: doc/make-obj pdf-lib/extGStates-dict! []
+	    register-extGState: func [
+		obj
+		/local name 
+	    ][
+		name: create-unique-name/pre obj "GS-"
+		extGStates/add-obj name obj
+		name
+	    ]
 	]
 	doc: to-be-page/doc
 
@@ -1501,7 +1526,7 @@ context [
 	if to-be-page/shadings [ resource/Shading: to-be-page/shadings ]
 	if to-be-page/patterns [ resource/Pattern: to-be-page/patterns ]
 	if to-be-page/fonts [ resource/Font: to-be-page/fonts ]
-
+	if to-be-page/extGStates [ resource/ExtGState: to-be-page/extGStates ]
 	; Create page
 	page: doc/make-obj pdf-lib/page-dict! [ graph resource ]
 	page/set-mediaBox reduce [ 0x0 face/size ]
@@ -1545,6 +1570,20 @@ context [
 	    key #"q" [unview]
 	]]
 	write %test-pattern.pdf face-to-pdf b
+	wait none
+    ]
+    test-alpha: does [
+	view/new layout compose/deep [ b: box white 400x400 effect[
+	    draw [
+		line-width 10
+		pen red
+		line 20x20 350x50
+		pen 0.0.0.128
+		line 20x20 350x70
+	    ]
+	    key #"q" [unview]
+	]]
+	write %test-alpha face-to-pdf b
 	wait none
     ]
 	

@@ -18,10 +18,12 @@ dr2: [ font fnt text 0x0 vectorial "Arc-open"
 	arc 80x80 70x40 30 100
 	line 70x45 80x45 line 75x40 75x50 ]
 dr3: [ font fnt text 0x0 vectorial "Arc-closed" arc 75x45 100x100 30 100  closed line 70x45 80x45 line 75x40 75x50 ]
+
+half-crimson: crimson + 0.0.0.128
 dr4: [ font fnt text 0x0 vectorial "Arc-open"
 	pen coal
 	arc 75x75 100x100 122 300
-	fill-pen crimson line-width 1
+	fill-pen half-crimson line-width 1
 	line 70x75 80x75 line 75x70 75x80 ]
 dr5: [ font fnt text 0x0 vectorial "Arc-closed" arc 75x75 100x100 30 300  closed line 70x75 80x75 line 75x70 75x80 ]
 

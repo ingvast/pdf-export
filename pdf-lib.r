@@ -299,8 +299,6 @@ context [
 		    ;TODO: get field
 		    val: get in self field
 		    if val [
-? field
-? val
 			field: system/words/to-string field
 			if find "+-" field/1  [ remove field ]
 			append string tab
