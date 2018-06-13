@@ -149,6 +149,7 @@ dr14: [
     spline 1 50x140 75x40 100x140
     spline 1 50x140 75x20 100x140
 ]
+half-red: 255.0.0.128
     
 dr15: [
     pen none fill-pen black
@@ -167,6 +168,11 @@ dr15: [
     line-pattern 5 10
     pen none brown
     circle 110x80 25
+
+    line-pattern 10  20  ; 20   with next argument it coredumps
+    fill-pen snow
+    pen half-red blue
+    box 10x120 140x140
 ]
 dr16: [
     pen none fill-pen black line-pattern none

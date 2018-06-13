@@ -401,6 +401,8 @@ context [
 		    pattern-length
 		    offset
 		    pattern
+		    alpha rgb
+		    alpha-name
 	    ][
 		if  all[ current-fill not no-fill ] [
 		    ; fill it
@@ -432,7 +434,14 @@ context [
 			repeat i pattern-count [
 			    strip: pick current-line-pattern i
 			    if color: pick current-pen i [
-				repend strea  [ color 'RG ]
+				rgb: to-tuple copy/part to-binary color 3
+				
+				alpha: (any [ color/4 255 ]) / 255.0
+
+				alpha-name: to-be-page/get-stroke-alpha-name alpha
+
+				repend strea  [ rgb 'RG to-refinement alpha-name 'gs ]
+
 				pattern: reduce [
 				    strip pattern-length - strip
 				]
@@ -734,7 +743,7 @@ context [
 
 		    repend strea [ 'q  ]
 
-		    set-current-env
+		    ;set-current-env
 		    eval-patterns cmds
 
 		    repend strea [ 'Q  ]
@@ -854,9 +863,13 @@ context [
 				    M/3: p/1/x - M/5
 				    M/4: p/1/y - M/6
 
+
+				    alpha-name: to-be-page/get-fill-alpha-name 1.0
+
 				    reference: to-refinement to-be-page/register-image img
 				    append strea compose [
 					q
+					    (to-refinement alpha-name) gs
 					    (M) cm 
 					    (reference) Do
 					'Q
@@ -920,6 +933,7 @@ context [
 			case [
 			    0 = length? colors [
 				current-fill: none
+				alpha: 1.0
 			    ]
 			    all [ 2 < length? colors 5 <= length? numbers not empty? types ][
 				set [
@@ -930,23 +944,22 @@ context [
 				    grad-scale-y
 				] numbers
 				grad-offset: any [ pairs/1 0x0 ]
+				alpha: 1.0
 			    ]
 			    true [
 				current-fill: reduce [ to-tuple copy/part to-binary first colors 3 'rg]
 				switch/default length? first colors [
 				    3 [
+					alpha: 1.0
 				    ]
 				    4 [ ; With alpha
 					alpha: colors/1/4 / 255
-					extGS-alpha: to-be-page/doc/make-obj
-					    pdf-lib/ext-graphic-state-dict! [
-					    -ca: alpha
-					]
-					alpha-name: to-be-page/register-extGState extGS-alpha
-					repend current-fill [ to-refinement alpha-name 'gs ]
-
 				    ]
 				] [ make error! reform [ {Tuple} p {cannot be treated as color}] ]
+
+				alpha-name: to-be-page/get-fill-alpha-name alpha
+
+				repend current-fill [ to-refinement alpha-name 'gs ]
 				? current-fill
 			    ]
 			]
@@ -1051,7 +1064,7 @@ context [
 
 	    eval-patterns: func [ pattern /local here ][
 		
-		set-current-env
+		;set-current-env
 
 		unless parse eval-draw pattern [
 		    any [ here:
@@ -1503,6 +1516,30 @@ context [
 		name: create-unique-name/pre obj "GS-"
 		extGStates/add-obj name obj
 		name
+	    ]
+
+	    get-stroke-alpha-name: func [
+		    alpha [number!]
+		    /local
+			extGS-alpha
+	    ][
+		extGS-alpha: to-be-page/doc/make-obj
+		    pdf-lib/ext-graphic-state-dict! [
+		    +CA: alpha
+		]
+		register-extGState extGS-alpha
+	    ]
+
+	    get-fill-alpha-name: func [
+		    alpha [number!]
+		    /local
+			extGS-alpha
+	    ][
+		extGS-alpha: to-be-page/doc/make-obj
+		    pdf-lib/ext-graphic-state-dict! [
+		    -ca: alpha
+		]
+		register-extGState extGS-alpha
 	    ]
 	]
 	doc: to-be-page/doc
