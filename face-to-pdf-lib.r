@@ -1609,18 +1609,25 @@ context [
 	write %test-pattern.pdf face-to-pdf b
 	wait none
     ]
+
     test-alpha: does [
-	view/new layout compose/deep [ b: box white 400x400 effect[
-	    draw [
-		line-width 10
-		pen red
-		line 20x20 350x50
-		pen 0.0.0.128
-		line 20x20 350x70
+	view/new b: layout compose/deep [
+	    box white 400x400 effect[
+		draw [
+		    line-width 10
+		    pen red
+		    line 20x20 350x50
+		    pen 0.0.0.128
+		    line 20x20 350x70
+		]
 	    ]
+	    at 200x20
+	    bx: box 400x400 effect[draw[ fill-pen 0.200.0.30 box 30x10 400x400 ]]
+	    at 30x100
+	    box 400x400 255.0.0.30
 	    key #"q" [unview]
-	]]
-	write %test-alpha face-to-pdf b
+	]
+	write %test-alpha.pdf face-to-pdf b
 	wait none
     ]
 	
