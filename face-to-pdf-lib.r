@@ -53,6 +53,15 @@ REBOL [
 
 ]
 
+do*: func [ blk /local e ][
+    if error? e: try [ 
+	any [  blk none ]
+    ] [
+	err: disarm e
+	? err
+    ]
+]
+
 context [
     
     export: func [
@@ -394,6 +403,7 @@ context [
 	    clear-path: does [ path: copy [] ]
 	    add-path: func [ p ] [ append path p ]
 
+
 	    paint-path: func [
 		/no-fill
 		/local
@@ -434,13 +444,7 @@ context [
 			repeat i pattern-count [
 			    strip: pick current-line-pattern i
 			    if color: pick current-pen i [
-				rgb: to-tuple copy/part to-binary color 3
-				
-				alpha: (any [ color/4 255 ]) / 255.0
-
-				alpha-name: to-be-page/get-stroke-alpha-name alpha
-
-				repend strea  [ rgb 'RG to-refinement alpha-name 'gs ]
+				append strea  to-be-page/color-to-stream/no-alpha color
 
 				pattern: reduce [
 				    strip pattern-length - strip
@@ -953,14 +957,13 @@ context [
 					alpha: 1.0
 				    ]
 				    4 [ ; With alpha
-					alpha: colors/1/4 / 255
+					alpha: 255 - colors/1/4 / 255
 				    ]
 				] [ make error! reform [ {Tuple} p {cannot be treated as color}] ]
 
 				alpha-name: to-be-page/get-fill-alpha-name alpha
 
 				repend current-fill [ to-refinement alpha-name 'gs ]
-				? current-fill
 			    ]
 			]
 
@@ -1019,11 +1022,11 @@ context [
 	    ]
 	    pen:  [
 		'pen [
-		    copy color some [ tuple! | none! ]
+		    copy colors some [ tuple! | none! ]
 		    (
-			if all [ 1 = length? color not color/1 ] [ color: copy [] ]
-			current-pen: color
-			if all[ not empty? current-pen  current-pen/1 ] [ repend strea [ current-pen/1 'RG ] ]
+			if all [ 1 = length? colors not colors/1 ] [ colors: copy [] ]
+			current-pen: colors
+			if all[ not empty? current-pen  current-pen/1 ] [ append strea to-be-page/color-to-stream current-pen/1 ]
 		    ) 
 		]
 	    ]
@@ -1052,7 +1055,7 @@ context [
 	    ]
 
 	    set-current-env: does [
-		if all[ not empty? current-pen current-pen/1 ]  [ repend strea [ current-pen/1 'RG ] ]
+		if all[ not empty? current-pen current-pen/1 ]  [ append strea to-be-page/color-to-stream current-pen/1 ]
 		if current-fill [ append strea current-fill  ]
 		if current-miter-limit [ repend strea [ current-miter-limit 'M ] ]
 		repend strea [
@@ -1158,15 +1161,16 @@ context [
 	face [object!]
 	to-be-page [ object! ] {Object containing the objects for the pdf-documents and list of coming resources.}
 	/local strea offset n  x y pos edge pane line-info
-	    reference p save-current-font
+	    reference p save-current-font color
     ][
 	strea: copy []
 
 	repend strea [ 0x0 face/size 're 'W 'n ] ; Set clipping
 	
 	if face/color [ ; background
+	    color: to-tuple copy/part to-binary face/color 3
 	    repend strea [
-		face/color 'rg
+		color 'rg
 		0 0 face/size 're 'f
 	    ]
 	]
@@ -1391,6 +1395,7 @@ context [
 		    object? :p [
 			to-be-page/matrix-push to-be-page/current-matrix
 			pos: as-pair p/offset/x p/offset/y
+			to-be-page/matrix-push to-be-page/current-matrix
 			append strea 'q
 			use [ mtrx ][
 			    append strea mtrx: draw-commands/translate pos/x pos/y
@@ -1428,24 +1433,29 @@ context [
 	; Initialize
 
 	dbg: to-be-page: make object! [
-	matrix-stack:   copy []
-	current-matrix: copy reduce [ 1 0 0 -1 0 face/size/y]
-	matrix-pop: does [
-	    if empty? matrix-stack [
-		make error! {Matrix stack empty when trying to pop}
-	    ]
-	    also 
-		last matrix-stack
-		;(
+	    matrix-stack:   copy []
+	    current-matrix: copy reduce [ 1 0 0 -1 0 face/size/y]
+	    matrix-pop: func [ [catch] ]  [
+		if empty? matrix-stack [ throw make error! "Matrix stack is empty" ]
+		also 
+		    last matrix-stack
 		    remove back tail matrix-stack
-		    ;matrix-stack 
-		;)
-	]
-	matrix-push: func [ mtrx ][
-	    append/only matrix-stack copy/part mtrx 6
-	    matrix-stack
-	    mtrx
-	]
+	    ]
+	    matrix-push: func [ mtrx ][
+		append/only matrix-stack copy/part mtrx 6
+		matrix-stack
+		mtrx
+	    ]
+
+	    color-to-stream: func [ color /no-alpha ] [
+		rgb: to-tuple copy/part to-binary color 3
+		
+		alpha: either any [ no-alpha not color/4 ]
+		    [ 1.0 ][ color/4 / 255.0 ]
+
+		alpha-name: get-stroke-alpha-name alpha
+		reduce [ rgb 'RG to-refinement alpha-name 'gs ]
+	    ]
 
 	    doc: pdf-lib/prepare-pdf
 
@@ -1613,21 +1623,38 @@ context [
 	write %test-pattern.pdf face-to-pdf b
 	wait none
     ]
+
     test-alpha: does [
-	view/new layout compose/deep [ b: box white 400x400 effect[
-	    draw [
-		line-width 10
-		pen red
-		line 20x20 350x50
-		pen 0.0.0.128
-		line 20x20 350x70
+	view/new b: layout compose/deep [
+	    box white 400x400 effect[
+		draw [
+		    line-width 10
+		    pen red
+		    line 20x20 350x150
+		    pen 0.0.0.128
+		    line 20x20 350x70
+		]
 	    ]
+	    at 200x20
+	    bx: box 400x400 effect[draw[ fill-pen 0.200.0.80 box 30x10 400x400 pen green]]
+	    at 30x100
+	    box 400x400 100.100.255.30
 	    key #"q" [unview]
-	]]
-	write %test-alpha face-to-pdf b
+	]
+	write %test.pdf face-to-pdf b
+	wait none
+    ]
+
+    test-two-fields: does [
+	view/new b: layout [
+	    button "Stay" 
+	    button "Quit (q)" [unview]
+	]
+	write %test.pdf face-to-pdf b
 	wait none
     ]
 	
 
     
 ] 
+
