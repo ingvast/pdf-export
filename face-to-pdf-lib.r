@@ -1389,6 +1389,7 @@ context [
 	    foreach p pane [
 		case [
 		    object? :p [
+			to-be-page/matrix-push to-be-page/current-matrix
 			pos: as-pair p/offset/x p/offset/y
 			append strea 'q
 			use [ mtrx ][
@@ -1430,12 +1431,15 @@ context [
 	matrix-stack:   copy []
 	current-matrix: copy reduce [ 1 0 0 -1 0 face/size/y]
 	matrix-pop: does [
+	    if empty? matrix-stack [
+		make error! {Matrix stack empty when trying to pop}
+	    ]
 	    also 
 		last matrix-stack
-		(
+		;(
 		    remove back tail matrix-stack
-		    matrix-stack 
-		)
+		    ;matrix-stack 
+		;)
 	]
 	matrix-push: func [ mtrx ][
 	    append/only matrix-stack copy/part mtrx 6
