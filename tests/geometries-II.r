@@ -3,8 +3,8 @@ REBOL [
 
 lib: do %../face-to-pdf-lib.r
 
-fnt: make face/font [ name: "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf" ]
-/usr/share/fonts/truetype/liberation
+;fnt: make face/font [ name: "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf" ]
+;/usr/share/fonts/truetype/liberation
 
 tt: func [ d ][
     view layout [ box sky 500x350 effect[ draw[ push d ]] key #"q" [unview]]
@@ -58,8 +58,8 @@ dr8: [
     translate 20x0
     triangle 80x10 30x22 100x30 blue white magenta
 ]
-puppy: load %/usr/share/pixmaps/faces/puppy.jpg
-cat-eye: load %/usr/share/pixmaps/faces/cat-eye.jpg
+puppy: load %images/puppy.jpg
+cat-eye: load %images/cat-eye.jpg
 
 dr9: [
     font fnt text vectorial "Image" 
