@@ -172,7 +172,7 @@ context [
 	closed
 	push
 	invert-matrix reset-matrix matrix
-	rotate  scale translate skew transformation
+	rotate  scale translate skew transform
 	
 	arrow
 	clip
