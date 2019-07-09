@@ -16,6 +16,7 @@ REBOL [
 	>> face-to-pdf-lib/face-to-pdf layout [ field "We are the champions" ]
 	In return you get a text stream. Save it to whatever file you want
 	>> write/binary %my.pdf face-to-pdf-lib/face-to-pdf layout [ text "This is file my.pdf" ]
+	Be sure to write in binary format.
 	
 	One pixel in the face will be one point in the pdf document.
 
@@ -1620,7 +1621,7 @@ context [
 	    ]
 	    key #"q" [unview]
 	]]
-	write %test-pattern.pdf face-to-pdf b
+	write/binary %test-pattern.pdf face-to-pdf b
 	wait none
     ]
 
@@ -1641,7 +1642,7 @@ context [
 	    box 400x400 100.100.255.30
 	    key #"q" [unview]
 	]
-	write %test.pdf face-to-pdf b
+	write/binary %test.pdf face-to-pdf b
 	wait none
     ]
 
@@ -1650,7 +1651,7 @@ context [
 	    button "Stay" 
 	    button "Quit (q)" [unview]
 	]
-	write %test.pdf face-to-pdf b
+	write/binary %test.pdf face-to-pdf b
 	wait none
     ]
 	

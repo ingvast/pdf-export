@@ -4,6 +4,7 @@ REBOL [
 lib: do %../face-to-pdf-lib.r
 
 ;fnt: make face/font [ name: "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf" ]
+fnt: make face/font []
 ;/usr/share/fonts/truetype/liberation
 
 tt: func [ d ][
@@ -230,7 +231,7 @@ view-it: func [ drs
 
 	drs: skip drs cols - 1
     ] 
-    view/new/offset layout [ text "test av geometrier"
+    view/new/offset foenster: layout [ text "test av geometrier"
 	f: box yellow / 1.5 900x450 effect [
 	    draw dr
 	    grid 150x150 0x0 2 3 black
@@ -242,7 +243,7 @@ view-it: func [ drs
 
 if error? err: try [ 
     view-it drs
-    write %geometries-II.pdf lib/face-to-pdf f
+    write/binary %geometries-II.pdf lib/face-to-pdf f
     none
 ] [
     trace off
