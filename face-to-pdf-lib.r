@@ -790,9 +790,21 @@ context [
 		    repend strea [
 			to-be-page/register-font current-font current-font/size 'Tf
 			render-mode 'Tr
-			pair/x pair/y 
-			'Td
-			string 'Tj
+		    ]
+		    use [ str next-string][
+			until [
+			    next-string: find string newline
+			    if next-string [ next-string: next next-string ]
+			    str: copy/part string any [ next-string tail string ]
+? str
+			    repend strea [
+				pair/x pair/y 
+				'Td
+				str 'Tj
+			    ]
+			    pair: pair - ( current-font/size * 0x1)
+			    not string: next-string
+			]
 		    ]
 		    if all [ render-mode = 0 current-fill ][ append strea current-fill ]
 		    repend strea [
