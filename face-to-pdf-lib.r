@@ -781,7 +781,7 @@ context [
 		    repend strea [
 			'q
 			'BT
-			1 0 0 -1 0 2 * pair/2 + current-font/size 'cm
+			1 0 0 -1 0 1 * pair/2 + current-font/size 'cm
 		    ]
 		
 		    either all [ not empty? current-pen current-pen/1 render-mode = 0 ]

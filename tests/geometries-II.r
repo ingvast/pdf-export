@@ -12,7 +12,7 @@ tt: func [ d ][
 ]
 
 
-dr1: [ font fnt text 0x0 vectorial "Circle" circle 75x75 50  ]
+dr1: [ pen forest font fnt text 0x0 vectorial "Circle" circle 75x75 50  ]
 dr2: [ font fnt text 0x0 vectorial "Arc-open"
 	arc 75x45 100x100 30 100
 	fill-pen crimson line-width 3
@@ -231,7 +231,8 @@ view-it: func [ drs
 
 	drs: skip drs cols - 1
     ] 
-    view/new/offset foenster: layout [ text "test av geometrier"
+    view/new/offset foenster: layout [
+	text "test av geometrier"
 	f: box yellow / 1.5 900x450 effect [
 	    draw dr
 	    grid 150x150 0x0 2 3 black
