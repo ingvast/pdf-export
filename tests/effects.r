@@ -5,8 +5,8 @@ fnt: make face/font [ name: "/usr/share/fonts/gnu-free/FreeSans.ttf" ]
 print "Images"
 
 
-puppy: load %/usr/share/pixmaps/faces/puppy.jpg
-cat-eye: load %/usr/share/pixmaps/faces/cat-eye.jpg
+puppy: load %images/puppy.jpg
+cat-eye: load %images/cat-eye.jpg
 
 special: make image! 4x4
 n: 1
