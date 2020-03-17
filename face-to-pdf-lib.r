@@ -952,7 +952,7 @@ context [
 				current-fill: none
 				alpha: 1.0
 			    ]
-			    all [ 2 < length? colors 5 <= length? numbers not empty? types ][
+			    all [ 2 <= length? colors 5 <= length? numbers not empty? types ][
 				set [
 				    grad-start-rng
 				    grad-stop-rng
@@ -1174,7 +1174,7 @@ context [
 	face [object!]
 	to-be-page [ object! ] {Object containing the objects for the pdf-documents and list of coming resources.}
 	/local strea offset n  x y pos edge pane line-info
-	    reference p save-current-font color
+	    reference p save-current-font color p1 p2
     ][
 	strea: copy []
 
@@ -1296,7 +1296,7 @@ context [
 				use [ draw-cmds ] [
 				    draw-cmds: p
 				    if word? draw-cmds [ draw-cmds: get draw-cmds ]
-				    also
+				    ;also
 					draw-to-stream
 					    draw-cmds
 					    face
@@ -1332,6 +1332,63 @@ context [
 			    append strea [ S Q ]
 			)
 		    ]
+		    |
+		    'gradient   ( p1: copy []  p2: none check-word: word! )
+			any [
+			      set p pair! ( p2: p ) 
+			      | set p tuple! ( append p1 p )
+			      | set p check-word (
+				p: get p
+				case [ 
+				  tuple? p [ append p1 p ]
+				  pair? p  [ p2: p ]
+				    true   [ check-word: "This text is likely not here" ]
+				]
+			    ) 
+			]
+		    (
+			to-be-page/matrix-push to-be-page/current-matrix
+			append strea compose [
+			    q
+			    (
+				also
+				    mtrx: draw-commands/translate offset/x offset/y 
+				    to-be-page/current-matrix: matrix-mult to-be-page/current-matrix mtrx
+			    )
+				(
+
+				use [ draw-cmds norm angle offset ] [
+				    norm: func [ pair ][ square-root pair/x ** 2 + ( pair/y ** 2) ]
+				    angle: func [ pair ][
+					if pair/x < 0 [ pair/x: negate pair/x return 180 - angle pair ]
+					if pair/y < 0 [ pair/y: negate pair/y return 360 - angle pair ]
+					if pair/x = 0 [ return 90 ]
+					return arctangent pair/y / pair/x
+				    ]
+				    alpha: angle p2
+				    offset: 0x0
+				    if alpha > 90 [ offset: as-pair face/size/x 0 ]
+				    if alpha > 180 [ offset: face/size ]
+				    if alpha > 270 [ offset: as-pair 0 face/size/y ]
+				    
+				    draw-cmds: probe compose [
+					fill-pen (first+ p1)
+						 linear (offset)
+						    0   (0.7 * norm face/size)
+						    (angle p2)   
+						    1      1      (p1)
+					pen none
+					box 0x0 (face/size)
+				    ]
+				    draw-to-stream
+					draw-cmds
+					face
+				]
+			    )
+			    Q    
+			]   
+			to-be-page/current-matrix: to-be-page/matrix-pop
+		    )
 		    |
 		    skip
 		]

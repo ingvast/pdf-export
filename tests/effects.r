@@ -38,7 +38,10 @@ view/new f: layout [
     origin 150x0
     box puppy effect [ key 20  ]
     box effect [ gradient 100x50 green blue ]
-    box effect [ gradient 10x5 green blue ]
+    box effect [ gradient 10x0 green blue ]
+    box effect [ gradient -10x0 orange magenta ]
+    box effect [ gradient 0x-10 purple wheat ]
+    box 150x150 puppy effect [ extend ] 
     
     key #"q" [ unview ]
 ]
