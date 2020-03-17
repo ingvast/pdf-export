@@ -1237,7 +1237,7 @@ context [
 			delta: func [ x ][ y: copy [] x: next x forall x [ append y (first x) - first back x ] y ]
 
 			x-is: reduce [ 0    	pos/x	 pos/x + 1  face/image/size/x ]
-			y-is: reduce [ 0    	pos/y	 pos/y + 1  face/image/size/x ]
+			y-is: reduce [ 0    	pos/y	 pos/y + 1  face/image/size/y ]
 
 			x-ps: reduce [ x-is/1   x-is/2   x-is/3 + ext/x    x-is/4 + ext/x ]
 			y-ps: reduce [ y-is/1   y-is/2   y-is/3 + ext/y    y-is/4 + ext/y ]
