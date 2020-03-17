@@ -28,7 +28,7 @@ view/new f: layout [
     box puppy 50x150 effect [ aspect ]  edge[ size: 2x2 color: black ]
     
     below
-    btn "Wows"  100x25  help "Detta is help"
+    b: btn "Wows"  100x25  help "Detta is help"
 
     box 150x150 puppy effect [ extend ] 
     image 50x50 special
@@ -40,7 +40,6 @@ view/new f: layout [
     box effect [ gradient 100x50 green blue ]
     box effect [ gradient 10x5 green blue ]
     
-    
     key #"q" [ unview ]
 ]
 r-box/image: to-image from-box
@@ -48,3 +47,4 @@ show r-box
 
 write %effects.pdf lib/face-to-pdf f
 wait none
+halt
