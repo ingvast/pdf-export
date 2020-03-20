@@ -609,7 +609,7 @@ context [
 	][
 	    value: max 0.0 value
 	    value: min 1.0 value
-	    value: round value * ( 2 ** bits - 1 )
+	    value: to integer! round value * ( 2 ** bits - 1 )
 	    result: copy []
 	    repeat i bits / 8 [
 		insert result value and 255
