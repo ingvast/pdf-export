@@ -239,7 +239,7 @@ context [
 	][
 	    result: copy/deep [ ps [] arrows [] ]
 	    R: R * 1x1
-	    parts: round/ceiling angle-span / 90
+	    parts: to-integer round/ceiling angle-span / 90
 	    part-angle: angle-span / parts
 	    d:  4 / 3 * tangent part-angle / 4
 	    if  closed [ repend result/ps [ p 'm ] ]
@@ -758,6 +758,18 @@ context [
 		)
 	    ]
 	    text: [
+; Vectorial text follows scaling and translation as other graphics do.
+; Text is printed at position without scaling and translation
+; For vectorial:
+;
+;
+; For non vectorial:
+;   We have to draw the text in the face coordinate system.
+;   Hence if face have transformation Tf and current transformation is Tc
+;   We shall apply thransformationi A on Tc to get to Tf.
+;	Tf = Tc * A
+;	inv(Tc) Tf = inv(Tc) * Tc * A = A
+;   So before drawing, apply the transformation A and then draw as usual.
 		'text ( render-mode: 0 )
 		    some [ 
 			set p pair! ( pair: p )
@@ -778,10 +790,12 @@ context [
 			render-mode: 0
 		    ]
 
-		    repend strea [
+		    repend strea [ 
 			'q
+			pair + 100x12 'm pair + 120x12 'l 'S
 			'BT
-			1 0 0 -1 0 1 * pair/2 + current-font/size 'cm
+			1 0 0 -1 0 0 * pair/2 + current-font/size 'cm
+			pair + 150x12 'm pair + 170x12 'l 'S
 		    ]
 		
 		    either all [ not empty? current-pen current-pen/1 render-mode = 0 ]
@@ -791,18 +805,18 @@ context [
 			to-be-page/register-font current-font current-font/size 'Tf
 			render-mode 'Tr
 		    ]
-		    use [ str next-string][
+		    use [ str next-string] [
 			until [
 			    next-string: find string newline
 			    if next-string [ next-string: next next-string ]
 			    str: copy/part string any [ next-string tail string ]
-? str
 			    repend strea [
-				pair/x pair/y 
+				negate pair 
 				'Td
 				str 'Tj
 			    ]
-			    pair: pair - ( current-font/size * 0x1)
+print [ pair  next-string str]
+			    pair: pair - ( current-font/size * 0x2)
 			    not string: next-string
 			]
 		    ]
