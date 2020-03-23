@@ -50,7 +50,7 @@ REBOL [
 	* Do not allow stroking with image.
     }
 
-    Requires: [ pdf-lib ]
+    Requires: [ pdf-lib linalg ]
 
 ]
 
@@ -62,6 +62,8 @@ do*: func [ blk /local e ][
 	? err
     ]
 ]
+
+do %linalg-r/linalg.r
 
 context [
     
@@ -78,6 +80,7 @@ context [
     
 
     pdf-lib: do %pdf-lib.r ; Load  the pdf-module
+
 
 
     ; Utility functions
@@ -136,6 +139,16 @@ context [
 		m1/1 * m2/5 + ( m1/3 * m2/6 ) + m1/5
 		m1/2 * m2/5 + ( m1/4 * m2/6 ) + m1/6
 	    ]
+    ]
+    pdf-matrix-to-matrix: func [ b ][
+	reduce[
+	    reduce [ b/1 b/3 b/5 ]
+	    reduce [ b/2 b/4 b/6 ]
+	    [         0   0  1   ]
+	]
+    ]
+    matrix-to-pdf-matrix: func [ b ][
+	reduce [ b/1/1 b/2/1 b/1/2 b/2/2 b/1/3 b/2/3 ]
     ]
 
     reduce-all-but: func [
@@ -770,32 +783,38 @@ context [
 ;	Tf = Tc * A
 ;	inv(Tc) Tf = inv(Tc) * Tc * A = A
 ;   So before drawing, apply the transformation A and then draw as usual.
-		'text ( render-mode: 0 )
+		'text ( vectorial: false pair: 0x0 string: "")
 		    some [ 
 			set p pair! ( pair: p )
 			|
 			set s string! (string: s )
 			|
-			[ 'anti-aliased | 'vectorial ( render-mode: 'vectorial )| 'aliased ]
+			[ 'anti-aliased | 'vectorial ( vectorial: true)| 'aliased ]
 		]
 		(
-		    if render-mode = 'vectorial [
+		    either vectorial [
 			render-mode:    case [
 			    all [not empty? current-pen current-fill ][ 2 ]
 			    all [ empty?  current-pen current-fill ] [ 0 ]
 			    all [ not empty? current-pen not current-fill ] [ 1 ]
 			    all [ empty?  current-pen  not current-fill ] [ 3 ]
 			]
-		    ][
-			render-mode: 0
+		    ] [ render-mode: 0 ]
+		    append strea [ q BT ]
+
+		    unless vectorial  [
+			transformation: mult-matrix-matrix
+			    inverse-matrix
+				pdf-matrix-to-matrix to-be-page/current-matrix
+				pdf-matrix-to-matrix to-be-page/pane-matrix
+			transformation: matrix-to-pdf-matrix transformation
+			append strea compose [ (transformation) cm ]
 		    ]
 
+
 		    repend strea [ 
-			'q
-			pair + 100x12 'm pair + 120x12 'l 'S
-			'BT
-			1 0 0 -1 0 0 * pair/2 + current-font/size 'cm
-			pair + 150x12 'm pair + 170x12 'l 'S
+			1 0 0 -1 pair/1  pair/2 + current-font/size 'cm
+
 		    ]
 		
 		    either all [ not empty? current-pen current-pen/1 render-mode = 0 ]
@@ -811,11 +830,9 @@ context [
 			    if next-string [ next-string: next next-string ]
 			    str: copy/part string any [ next-string tail string ]
 			    repend strea [
-				negate pair 
-				'Td
 				str 'Tj
+				0 negate current-font/size 'Td
 			    ]
-print [ pair  next-string str]
 			    pair: pair - ( current-font/size * 0x2)
 			    not string: next-string
 			]
@@ -1192,6 +1209,8 @@ print [ pair  next-string str]
     ][
 	strea: copy []
 
+	to-be-page/pane-matrix: to-be-page/current-matrix
+
 	repend strea [ 0x0 face/size 're 'W 'n ] ; Set clipping
 	
 	if face/color [ ; background
@@ -1305,15 +1324,17 @@ print [ pair  next-string str]
 				    mtrx: draw-commands/translate offset/x offset/y 
 				    to-be-page/current-matrix: matrix-mult to-be-page/current-matrix mtrx
 			    )
-				(
-
+			    (
 				use [ draw-cmds ] [
 				    draw-cmds: p
 				    if word? draw-cmds [ draw-cmds: get draw-cmds ]
-				    ;also
-					draw-to-stream
-					    draw-cmds
-					    face
+
+				    to-be-page/pane-matrix: to-be-page/current-matrix
+				    ? to-be-page/current-matrix
+				    
+				    draw-to-stream
+					draw-cmds
+					face
 				]
 			    )
 			    Q    
@@ -1516,9 +1537,10 @@ print [ pair  next-string str]
     ][
 	; Initialize
 
-	dbg: to-be-page: make object! [
+	to-be-page: make object! [
 	    matrix-stack:   copy []
 	    current-matrix: copy reduce [ 1 0 0 -1 0 face/size/y]
+	    pane-matrix: none
 	    matrix-pop: func [ [catch] ]  [
 		if empty? matrix-stack [ throw make error! "Matrix stack is empty" ]
 		also 
@@ -1672,6 +1694,7 @@ print [ pair  next-string str]
 	; Creeate the object holding pages together
 	doc/make-obj/root pdf-lib/catalog-dict! [ pages ]
 	
+	? to-be-page/matrix-stack
 	doc/to-string
     ]
 
