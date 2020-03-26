@@ -61,6 +61,7 @@ dr8: [
 ]
 puppy: load %images/puppy.jpg
 cat-eye: load %images/cat-eye.jpg
+dart: load %images/dart.png
 
 dr9: [
     font fnt text vectorial "Image" 
@@ -202,9 +203,16 @@ dr18: [
     fill-pen blue   linear 10x115 0         50       45    10      10      green red yellow  
     box 0x90 150x130 
 ]
+
+dr19: [
+    pen none fill-pen black line-pattern none
+    font fnt text vectorial "Transparent image"
+    scale 0.7 0.7
+    image 5x15 dart
+]
     
 
-drs: copy []  repeat i 18 [ append drs to-word rejoin [ "dr" i ]]
+drs: copy []  repeat i 19 [ append drs to-word rejoin [ "dr" i ]]
 
 replace drs 'dr12 []
 

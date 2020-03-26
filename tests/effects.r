@@ -7,6 +7,7 @@ print "Images"
 
 puppy: load %images/puppy.jpg
 cat-eye: load %images/cat-eye.jpg
+dart: load %images/dart.png
 
 special: make image! 4x4
 n: 1
@@ -37,11 +38,13 @@ view/new f: layout [
 
     origin 150x0
     box puppy effect [ key 20  ]
+    box puppy effect [ key 10.10.10  ]
     box effect [ gradient 100x50 green blue ]
     box effect [ gradient 10x0 green blue ]
     box effect [ gradient -10x0 orange magenta ]
     box effect [ gradient 0x-10 purple wheat ]
     box 150x150 puppy effect [ extend ] 
+    box 150x150 dart effect [ fit ] 
     
     key #"q" [ unview ]
 ]
@@ -49,5 +52,6 @@ r-box/image: to-image from-box
 show r-box
 
 write %effects.pdf lib/face-to-pdf f
+print "Written"
 wait none
 halt
