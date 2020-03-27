@@ -51,7 +51,6 @@ REBOL [
     }
 
     Requires: [ pdf-lib linalg ]
-
 ]
 
 do*: func [ blk /local e ][
