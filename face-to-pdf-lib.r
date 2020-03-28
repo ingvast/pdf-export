@@ -1609,7 +1609,7 @@ context [
 	    ][
 		extGS-alpha: to-be-page/doc/make-obj
 		    pdf-lib/ext-graphic-state-dict! [
-		    +CA: alpha
+		    +CA: to-decimal alpha
 		]
 		register-extGState extGS-alpha
 	    ]
@@ -1621,7 +1621,7 @@ context [
 	    ][
 		extGS-alpha: to-be-page/doc/make-obj
 		    pdf-lib/ext-graphic-state-dict! [
-		    -ca: alpha
+		    -ca: to-decimal alpha
 		]
 		register-extGState extGS-alpha
 	    ]
