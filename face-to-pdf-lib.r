@@ -50,8 +50,7 @@ REBOL [
 	* Do not allow stroking with image.
     }
 
-    Requires: [ pdf-lib ]
-
+    Requires: [ pdf-lib linalg ]
 ]
 
 do*: func [ blk /local e ][
@@ -62,6 +61,8 @@ do*: func [ blk /local e ][
 	? err
     ]
 ]
+
+do %linalg-r/linalg.r
 
 context [
     
@@ -78,6 +79,7 @@ context [
     
 
     pdf-lib: do %pdf-lib.r ; Load  the pdf-module
+
 
 
     ; Utility functions
@@ -136,6 +138,16 @@ context [
 		m1/1 * m2/5 + ( m1/3 * m2/6 ) + m1/5
 		m1/2 * m2/5 + ( m1/4 * m2/6 ) + m1/6
 	    ]
+    ]
+    pdf-matrix-to-matrix: func [ b ][
+	reduce[
+	    reduce [ b/1 b/3 b/5 ]
+	    reduce [ b/2 b/4 b/6 ]
+	    [         0   0  1   ]
+	]
+    ]
+    matrix-to-pdf-matrix: func [ b ][
+	reduce [ b/1/1 b/2/1 b/1/2 b/2/2 b/1/3 b/2/3 ]
     ]
 
     reduce-all-but: func [
@@ -239,7 +251,7 @@ context [
 	][
 	    result: copy/deep [ ps [] arrows [] ]
 	    R: R * 1x1
-	    parts: round/ceiling angle-span / 90
+	    parts: to-integer round/ceiling angle-span / 90
 	    part-angle: angle-span / parts
 	    d:  4 / 3 * tangent part-angle / 4
 	    if  closed [ repend result/ps [ p 'm ] ]
@@ -758,30 +770,50 @@ context [
 		)
 	    ]
 	    text: [
-		'text ( render-mode: 0 )
+; Vectorial text follows scaling and translation as other graphics do.
+; Text is printed at position without scaling and translation
+; For vectorial:
+;
+;
+; For non vectorial:
+;   We have to draw the text in the face coordinate system.
+;   Hence if face have transformation Tf and current transformation is Tc
+;   We shall apply thransformationi A on Tc to get to Tf.
+;	Tf = Tc * A
+;	inv(Tc) Tf = inv(Tc) * Tc * A = A
+;   So before drawing, apply the transformation A and then draw as usual.
+		'text ( vectorial: false pair: 0x0 string: "")
 		    some [ 
 			set p pair! ( pair: p )
 			|
 			set s string! (string: s )
 			|
-			[ 'anti-aliased | 'vectorial ( render-mode: 'vectorial )| 'aliased ]
+			[ 'anti-aliased | 'vectorial ( vectorial: true)| 'aliased ]
 		]
 		(
-		    if render-mode = 'vectorial [
+		    either vectorial [
 			render-mode:    case [
 			    all [not empty? current-pen current-fill ][ 2 ]
 			    all [ empty?  current-pen current-fill ] [ 0 ]
 			    all [ not empty? current-pen not current-fill ] [ 1 ]
 			    all [ empty?  current-pen  not current-fill ] [ 3 ]
 			]
-		    ][
-			render-mode: 0
+		    ] [ render-mode: 0 ]
+		    append strea [ q BT ]
+
+		    unless vectorial  [
+			transformation: mult-matrix-matrix
+			    inverse-matrix
+				pdf-matrix-to-matrix to-be-page/current-matrix
+				pdf-matrix-to-matrix to-be-page/pane-matrix
+			transformation: matrix-to-pdf-matrix transformation
+			append strea compose [ (transformation) cm ]
 		    ]
 
-		    repend strea [
-			'q
-			'BT
-			1 0 0 -1 0 1 * pair/2 + current-font/size 'cm
+
+		    repend strea [ 
+			1 0 0 -1 pair/1  pair/2 + current-font/size 'cm
+
 		    ]
 		
 		    either all [ not empty? current-pen current-pen/1 render-mode = 0 ]
@@ -791,18 +823,16 @@ context [
 			to-be-page/register-font current-font current-font/size 'Tf
 			render-mode 'Tr
 		    ]
-		    use [ str next-string][
+		    use [ str next-string] [
 			until [
 			    next-string: find string newline
 			    if next-string [ next-string: next next-string ]
 			    str: copy/part string any [ next-string tail string ]
-? str
 			    repend strea [
-				pair/x pair/y 
-				'Td
 				str 'Tj
+				0 negate current-font/size 'Td
 			    ]
-			    pair: pair - ( current-font/size * 0x1)
+			    pair: pair - ( current-font/size * 0x2)
 			    not string: next-string
 			]
 		    ]
@@ -1175,8 +1205,11 @@ context [
 	to-be-page [ object! ] {Object containing the objects for the pdf-documents and list of coming resources.}
 	/local strea offset n  x y pos edge pane line-info
 	    reference p save-current-font color p1 p2
+	    face-image key
     ][
 	strea: copy []
+
+	to-be-page/pane-matrix: to-be-page/current-matrix
 
 	repend strea [ 0x0 face/size 're 'W 'n ] ; Set clipping
 	
@@ -1188,7 +1221,32 @@ context [
 	    ]
 	]
 	if image? face/image [
-	    reference: to-refinement to-be-page/register-image face/image
+	    face-image: copy face/image
+	    if	parse face/effect [ thru 'key set key [ integer! | tuple! ] to end ][
+		    switch type? key compose [
+			(integer!) [ ; those being value and darker will be transparent
+			    use [ gray alpha ][
+				layout compose/deep [ gray: image face-image effect [ luma ( negate key) ] ]
+				; removes key from gray values
+				; Any black color shall be transparent
+				gray: p: to-image gray
+				alpha: face-image/alpha
+				while [ p: find p black ][
+				    poke alpha index? p #"^(ff)"
+				    p: next p
+				]
+				face-image/alpha: alpha
+			    ]
+			]
+			(tuple!) [ ; Only those matching exactly will be transparent
+			    new-key: to tuple! append to binary! key #{FF}
+			    p: face-image
+			    while [ p: find p key ][ probe index? p p/1: new-key p: next p ]
+			]
+		    ]
+	    ]
+	    reference: to-refinement to-be-page/register-image face-image
+
 	    case [
 		find face/effect 'fit [
 		    repend strea [
@@ -1200,13 +1258,13 @@ context [
 		find face/effect 'aspect [
 		    use [ x-scale y-scale scale ][
 			;for full fit scale in x-direction
-			x-scale: face/size/x / face/image/size/x
-			y-scale: face/size/y / face/image/size/y
+			x-scale: face/size/x / face-image/size/x
+			y-scale: face/size/y / face-image/size/y
 			scale: min x-scale y-scale
 			repend strea [
 			    'q
-			    face/image/size/x * scale 0 0 negate face/image/size/y * scale
-			    0 face/image/size/y * scale 'cm 
+			    face-image/size/x * scale 0 0 negate face-image/size/y * scale
+			    0 face-image/size/y * scale 'cm 
 			    reference 'Do
 			    'Q
 			]
@@ -1225,9 +1283,9 @@ context [
 		    ] [
 			pos: ext: none
 			parse next p [ set pos pair! set ext pair! ]
-			pos: any [ pos face/image/size / 2 ]
+			pos: any [ pos face-image/size / 2 ]
 			edge-size: any [ all[ face/edge face/edge/size ] 0x0 ]
-			ext: any [ ext face/size - face/image/size - (2 * edge-size )] 
+			ext: any [ ext face/size - face-image/size - (2 * edge-size )] 
 			; Pos says which column and row that is to be expanded
 			; ext is the number of cols and rows to repeat the column at pos
 
@@ -1236,8 +1294,8 @@ context [
 
 			delta: func [ x ][ y: copy [] x: next x forall x [ append y (first x) - first back x ] y ]
 
-			x-is: reduce [ 0    	pos/x	 pos/x + 1  face/image/size/x ]
-			y-is: reduce [ 0    	pos/y	 pos/y + 1  face/image/size/y ]
+			x-is: reduce [ 0    	pos/x	 pos/x + 1  face-image/size/x ]
+			y-is: reduce [ 0    	pos/y	 pos/y + 1  face-image/size/y ]
 
 			x-ps: reduce [ x-is/1   x-is/2   x-is/3 + ext/x    x-is/4 + ext/x ]
 			y-ps: reduce [ y-is/1   y-is/2   y-is/3 + ext/y    y-is/4 + ext/y ]
@@ -1250,7 +1308,7 @@ context [
 			repeat i 3 [
 			    repeat j 3 [
 				ref: to-refinement to-be-page/register-image copy/part
-				    at face/image as-pair x-is/:i y-is/:j
+				    at face-image as-pair x-is/:i y-is/:j
 				    as-pair x-isize/:i y-isize/:j
 				repend strea [
 				    'q
@@ -1266,7 +1324,7 @@ context [
 		]
 		true [ ; Scale 1:1
 		    repend strea [
-			'q face/image/size/x 0 0 negate face/image/size/y 0 face/image/size/y 'cm 
+			'q face-image/size/x 0 0 negate face-image/size/y 0 face-image/size/y 'cm 
 			reference 'Do
 			'Q
 		    ]
@@ -1291,15 +1349,16 @@ context [
 				    mtrx: draw-commands/translate offset/x offset/y 
 				    to-be-page/current-matrix: matrix-mult to-be-page/current-matrix mtrx
 			    )
-				(
-
+			    (
 				use [ draw-cmds ] [
 				    draw-cmds: p
 				    if word? draw-cmds [ draw-cmds: get draw-cmds ]
-				    ;also
-					draw-to-stream
-					    draw-cmds
-					    face
+
+				    to-be-page/pane-matrix: to-be-page/current-matrix
+				    
+				    draw-to-stream
+					draw-cmds
+					face
 				]
 			    )
 			    Q    
@@ -1371,7 +1430,7 @@ context [
 				    if alpha > 180 [ offset: face/size ]
 				    if alpha > 270 [ offset: as-pair 0 face/size/y ]
 				    
-				    draw-cmds: probe compose [
+				    draw-cmds: compose [
 					fill-pen (first+ p1)
 						 linear (offset)
 						    0   (0.7 * norm face/size)
@@ -1502,9 +1561,10 @@ context [
     ][
 	; Initialize
 
-	dbg: to-be-page: make object! [
+	to-be-page: make object! [
 	    matrix-stack:   copy []
 	    current-matrix: copy reduce [ 1 0 0 -1 0 face/size/y]
+	    pane-matrix: none
 	    matrix-pop: func [ [catch] ]  [
 		if empty? matrix-stack [ throw make error! "Matrix stack is empty" ]
 		also 

@@ -1,0 +1,3 @@
+[submodule "linalg-r"]
+	path = linalg-r
+	url = ./linalg-r
