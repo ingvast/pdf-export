@@ -3,8 +3,10 @@ REBOL [
 
 lib: do %../face-to-pdf-lib.r
 
-;fnt: make face/font [ name: "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf" ]
-fnt: make face/font []
+fnt: switch system/version/4 [
+    3 [ make face/font [] ]
+    4 [ make face/font [ name: "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf" ] ]
+]
 ;/usr/share/fonts/truetype/liberation
 
 tt: func [ d ][
