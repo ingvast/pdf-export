@@ -49,6 +49,8 @@ Writing more than one page is not yet implemented.
 * The draw pen cannot be an image
 * Images can have linear transformations, so the general method of setting all four corners of an image
   does not render correctly.
+* Spline not implemented
+* Nothing from  Shape subdialect is implemented
 
 
 

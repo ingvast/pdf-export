@@ -1,13 +1,7 @@
 REBOL [
 ]
 
-;lib-dir: join dirize to-rebol-file get-env "BIOSERVO" %tools/rebol/libs
 unview/all
-
-do %graph.r
-
-x: []  repeat i 360 [ append x i ]
-y: map-each i x [ sine i ]
 
 view/new  layout  [
       panel [
@@ -44,14 +38,10 @@ view/new  layout  [
     key #"q" [unview]
 ]
 
-;do lib-dir/dbg-tools.r
-
 do/args %../face-to-pdf-lib.r 'face-to-pdf 
 
-;show-changed-vars
 
 write %draw-texts.pdf face-to-pdf p
-;write %draw-texts-b.pdf face-to-pdf b
 
 halt
 
