@@ -118,6 +118,45 @@ context [
 	    obj/type = 'image-alpha!
 	]
     ]
+    transform-content: func [
+	{Transforms the data in stream into real values.
+	 pairs are made into two values.
+	 tuples with length three treated as colors and transformed into pdf color values,
+	 i.e. 0.0 - 1.0}
+	stream [block!]
+	/rgb {Transforms tuples of length 3 to pdf color}
+	/scale sc [block! number!] {Applies the values in sc on the resulting data}
+	/local item  result s
+    ][
+	result: copy []
+
+	sc: any [ sc copy [1] ]
+	next-sc: does [
+	    also first+ sc
+		 if tail? sc [ sc: head sc ]
+	]
+
+	foreach item stream [
+	    switch/default type? item reduce [ 
+		integer! decimal! [ append  result item * next-sc ]
+		pair! [ repend result [ item/x * next-sc item/y * next-sc] ]
+		tuple! [
+		    either all [ rgb 3 = length? item]  [
+			foreach b to-binary item [ append result b / 255.0 * next-sc ] 
+		    ][
+			foreach b to-binary item [ append result b * next-sc] 
+		    ]
+		]
+	    ] [
+		make error!  reform [
+		    "Error:"
+		    type? item
+		    "Cannot be given in this type of stream"
+		]
+	    ]
+	]
+	result
+    ]
 
     to-pdf-string: func [
 	{Takes a block of pdf graphics commands (encoded as rebol) and
@@ -218,7 +257,7 @@ context [
     ]
 
     base-obj!: make object! [
-	header: func [ obj-list] [ reduce [ get-obj-id obj-list self 0 'obj ] ] ;Head should print the first line of object
+	header: func [ obj-list [block!] ] [ reduce [ get-obj-id obj-list self 0 'obj ] ] ;Head should print the first line of object
 	footer: "endobj"
 	init: none
 	
@@ -241,7 +280,14 @@ context [
 		]
 	    ]
 	]
-	to-string: func[ obj-list /is-stream ] [
+	to-string: func[
+	    {Converts the object to a text stream
+	    Convention that letters + and - at the beginning of variable names are not printed.
+	    (Use + for mostly upprcase and - for lowercase)
+	    That way we can handle  same name only distinguishded by capitalization.
+	    }
+	    obj-list [block!] /is-stream
+	] [
 	    string: copy ""
 	    if :header [
 		append string to-pdf-string obj-list header obj-list
@@ -250,8 +296,11 @@ context [
 	    append string "<<^/"
 	    use [ val ][
 		foreach field dict [
+		    ;TODO: get field
 		    val: get in self field
 		    if val [
+			field: system/words/to-string field
+			if find "+-" field/1  [ remove field ]
 			append string tab
 			append string to-pdf-string obj-list reduce [ to-refinement field  ]
 			append string tab
@@ -407,6 +456,40 @@ context [
 	]
     ]
 
+    ext-graphic-state-dict!: make base-obj! [
+	append dict [ Type 
+	    LW LC LJ ML
+	    D RI
+	    +OP -op		
+	    OPM
+	    Font
+	    BG BG2
+	    UCR UCR2
+	    TR TR2
+	    HT
+	    FL
+	    SM
+	    SA
+	    BM SMask
+	    +CA -ca
+	    AIS
+	    TK
+	]
+
+	Type: /ExtGState
+
+	LW: LC: LJ: ML: D: RI:
+	+OP: -op:		;+ denotes capital letters when in doubt (- small letters)
+	OPM: Font: BG: BG2: UCR: UCR2: TR: TR2:
+	HT: FL: SM: SA: BM: SMask: +CA: -ca: AIS:
+	TK: none
+
+	init: func [ spec ][
+	    spec: bind/copy spec self
+	    do spec
+	]
+    ]
+
 
     font-dict!: make base-obj! [
 	Type: /Font
@@ -424,7 +507,10 @@ context [
 	check: does [ true ]
 	value-list: []
 	add-obj: func [ name obj ][
-	    append value-list reduce [ name obj ]
+	    unless find value-list name [
+		append value-list reduce [ name obj ]
+
+	    ]
 	]
 	init: func [ spec ][
 	    unless block? spec [ spec: reduce [ spec ] ]
@@ -447,7 +533,7 @@ context [
 		append string to-pdf-string obj-list reduce [ value ]
 		append string newline
 	    ]
-	    append string ">>^/"
+	    append string ">>^/endobj^/"
 	    string
 	]
     ]
@@ -457,16 +543,267 @@ context [
     XObjects-dict!: make objs-dict! [
 	Type: /XObjects
     ]
+    extGStates-dict!: make objs-dict! [
+	Type: /ExtGState
+    ]
     shadings-dict!:  make objs-dict! [
 	Type: /Shading
     ]
+    patterns-dict!:  make objs-dict! [
+	Type: /Pattern
+    ]
 
+    function-poly-dict!: make base-obj! [
+	append dict [
+	    C0 C1
+	    N
+	    FunctionType
+	    Domain
+	]
+	C0: [ 0 ]
+	C1: [ 1 ]
+	N:  [ 1 ]
+	Domain: [ 0 1 ]
+	FunctionType: 2
+    ]
 
-    shading-dict!: make base-obj! [
-	append dict [ Type PatternType ShadingType  ColorSpace ]
-	PatternType: 2
-	ShadingType: none
+    function-interp-dict!: make base-stream! [
+	Type: /Function
+	doc:
+	{Interpolation of n inputs to m outputs
+	    Size    is an array of the number of input samples of each input.
+		    So for one input with five samples it is [ 5 ]
+		    With two inputs three and eight samples it is [ 3 8 ]
+	    Order   Integer 1 or 3 of the order of interpolation.
+	    Encode  Array of how to encode the input.
+		    Meaning of lowest repsecively highest sample of each input dimension.
+		    [ in1SampleFirst in1_SampleLast ... in(n)SampleFirst in(n)SamleLast ]
+		    Default  0 and Size-1 Decode Array similar to Encode but for output.
+	    BitsPerSample Can be 1 2 4 8 12 16 24 32
+	The interpolation does not extrapolate outside the Domain, input is clipped.
+	Output is clipped to Range.
+	The values given are scanned for lowest and highest values, so Decode is normally 
+	set to the output dimension and Decode is calculated to precisely contain the samples.
+	}
+	append dict [
+	    BitsPerSample
+	    Size
+	    Order
+	    Decode Encode
+	    Domain Range
+	    FunctionType
+	]
+	FunctionType: 0
+	BitsPerSample: 'required
+	Size: 'required ; How many samples of each input dimension
+	Order: 1 ; Interpolation order (1 or 3)
+	Encode: none ; The input values are scaled against this vector.
+	Decode: none 
+	Domain: 'required
+	Range: 'required
+
+	sampleToBin: func [
+	     value [number!] {A number to make binary. Values are bound to [0, 1]}
+	     bits [integer!] {A value of number of bits, steps of 8}
+	     /local result 
+	][
+	    value: max 0.0 value
+	    value: min 1.0 value
+	    value: to integer! round value * ( 2 ** bits - 1 )
+	    result: copy []
+	    repeat i bits / 8 [
+		insert result value and 255
+		value: shift value 8
+	    ]
+	    make binary! result
+	]
+	bin-to-block: func [ bin /local p result ][
+	    result: copy []
+	    parse/all bin [ any [ copy p skip ( append result to-integer to-char p ) ] ]
+	    result 
+	]
+	to-binary-string: func [ 
+	    /local
+		inter base
+		dims
+		result
+	][
+	    base: to-integer 2 ** BitsPerSample
+
+	    ; transform data that is not numbers.
+	    inter: transform-content/rgb stream
+
+	    result: copy #{}
+	    if integer? Decode [  ; Automatically set Decode to the range that data spans
+		dims: Decode
+		Decode: copy []
+		loop dims [ append Decode [ 1e36 -1e36 ] ]
+		while [ not tail? inter ] [ 
+		    x: first+ inter
+		    Decode/1: min Decode/1 x
+		    Decode/2: max Decode/2 x
+		    if tail? Decode: skip Decode 2 [ Decode: head Decode ]
+		]   
+		; Check we have used all the Decode components, otherwise the data
+		; is not the correct length
+		unless head? Decode [ make error! {Data in type 0 function is not right length} ]
+		while [ not tail? Decode ] [ ; Make sure Decode spans all dimensions
+		    if Decode/1 = Decode/2 [ Decode/2: Decode/1 + 1 ]
+		    Decode: skip Decode 2
+		]
+		Decode: head Decode
+	    ]
+	    inter: head inter
+	    while [ not tail? inter ] [ 
+		x: first+ inter
+		low: first Decode
+		high: second Decode
+		append result sampleToBin x - low / ( high - low )  BitsPerSample
+		if tail? Decode: skip Decode 2 [ Decode: head Decode ]
+	    ]   
+	    result
+	]
+	to-string: func [ obj-list ] [
+	    unless block? stream [ stream: reduce [ stream ] ]
+
+	    stream: reduce stream
+	    stream-string: to-binary-string
+
+	    to-string*/is-stream obj-list
+	    append string stream-start
+	    append string newline
+	    append string stream-string
+	    append string newline
+
+	    if stream-end [ repend string [ stream-end newline ] ]
+	    if footer [ repend string  [ footer newline ] ]
+	    string
+	]
+
+	one-input-dimension: func [
+	    { 
+		Use when the input is one dimensional.
+	    }
+	    dims-out [integer!] {Number of dimensions in ouput}
+	    spec [block!] {List of values}
+	    /Domain domain-values [block!] {The low and high of input value. Default [0 1/(size-1)]}
+	    /local Range-low Range-high
+	] [
+	    stream: transform-content/rgb reduce spec
+	    Decode: dims-out
+	    Size: reduce [ ( length? stream ) / dims-out ]
+	    self/Domain: any [ domain-values copy [0 1] ]
+	    insert/dup Range-low:  copy []  1e36 dims-out 
+	    insert/dup Range-high: copy [] -1e36 dims-out 
+	    Range-low: tail Range-low
+	    Range-high: tail Range-high
+
+	    foreach x stream [
+		if tail? Range-low  [ Range-low:  head Range-low ]
+		if tail? Range-high [ Range-high: head Range-high ]
+		if x > Range-high/1 [ Range-high/1: x ]
+		if x < Range-low/1  [ Range-low/1:  x ]
+		first+ Range-high
+		first+ Range-low
+	    ]
+	    Range: copy []
+	    Range-low:  head Range-low
+	    Range-high: head Range-high
+	    repeat i dims-out [
+		append Range Range-low/:i
+		append Range Range-high/:i
+	    ]
+	]
+
+	init: func [ spec ][
+	    spec: bind/copy spec self
+	    do spec
+	]
+    ]
+
+    shading-pattern-dict!: make base-obj! [
+	append dict [
+		Type
+		PatternType
+		Matrix
+		ExtGState
+		Shading
+	]
+	Type: /Pattern
+	PatternType: 2 ; shading patterns
+	Shading: 'required  ; An object such as shading-axial-dict!
+	Matrix: none
+	ExtGState: none
+	init: func [
+	    spec
+	    /local p mtrx
+	][
+	    parse reduce spec [
+		any [ 
+		    [ set p object! ( Shading: p ) ]
+		    |
+		    [ p: set mtrx  block!  :p into [ 6 number! any skip ] 
+			(Matrix: copy/part mtrx 6 )
+		    ]
+		]
+	    ]
+	]
+    ]
+
+    shading-proto-dict!: make base-obj! [
+	append dict [ 
+	    ShadingType
+	    ColorSpace
+	    Background
+	    BBox
+	    AntiAlias
+	]
+	ShadingType: 'required
 	ColorSpace: /DeviceRGB
+	Background: none
+	BBox: none
+	AntiAlias: none
+	init: func [ spec ][
+	    spec: bind/copy spec self
+	    do spec
+	]
+    ]
+
+    shading-axial-dict!: make shading-proto-dict! [
+	append dict [
+		Coords Domain
+		Function Extend
+	]
+	ShadingType: 2
+	Coords:  'required
+	Function: 'required
+	Extend: none
+	Domain: none
+	from-to: func [ from to ][
+	    if Coords = 'required [ Coords: reduce [ none none none none ] ]
+	    Coords/1: from/1 Coords/2: from/2
+	    Coords/3: to/1   Coords/4: to/2
+	]
+    ]
+
+    shading-radial-dict!: make shading-proto-dict! [
+	append dict [
+		Coords Domain
+		Function Extend
+	]
+	ShadingType: 3
+	Coords:  'required
+	Function: 'required
+	Extend: none
+	Domain: none
+	from: func [ p [pair! block!] r [number!] ][
+	    if Coords = 'required [ Coords: reduce [ none none none none none none ] ]
+	    Coords/1: p/1 Coords/2: p/2 Coords/3: r
+	]
+	to: func [ p [pair! block!] r [number!] ][
+	    if Coords = 'required [ Coords: reduce [ none none none none none none ] ]
+	    Coords/4: p/1 Coords/5: p/2 Coords/6: r
+	]
     ]
 
     shading-triangles-dict!: make base-stream! [
@@ -499,7 +836,7 @@ context [
 	    See also the  method test-triangles
 	}
 	append dict [
-	    Type PatternType ShadingType
+	    PatternType ShadingType
 	    ColorSpace Decode BitsPerComponent
 	    BitsPerCoordinate BitsPerFlag
 	]
@@ -536,25 +873,13 @@ context [
 	    base: to-integer 2 ** BitsPerCoordinate
 	    shifting: base / 2
 	    Decode: reduce [ negate shifting shifting negate shifting shifting 0 1 0 1 0 1]
-	    inter: copy []
-	    foreach item stream [
-		probe item
-		switch/default type? item reduce [ 
-		    integer! [ append  inter item ]
-		    pair! [ repend inter [ item/x item/y ] ]
-		    tuple! [ foreach b to-binary item [ append inter b ] ]
-		] [
-		    make error!  reform [
-			"Error:"
-			type? item
-			"Cannot be given in shading triangles streams"
-		    ]
-		]
-	    ]
+
+	    inter: transform-content stream
+
 	    result: copy #{}
 	    foreach [ flag x y r g b ] inter [
 		append result componentsToBin flag BitsPerFlag
-		append result componentsToBin probe x + ?? shifting BitsPerCoordinate
+		append result componentsToBin x + shifting BitsPerCoordinate
 		append result componentsToBin y + shifting BitsPerCoordinate
 		append result componentsToBin r BitsPerComponent
 		append result componentsToBin g BitsPerComponent
@@ -587,7 +912,8 @@ context [
 	ExtGState: none
 	ProcSet: [ /PDF /Text /ImageB /ImageC /ImageI ]
 	Shading: none
-	append dict [ Shading Font XObject ProcSet ExtGState ]
+	Pattern: none
+	append dict [ Shading Font XObject ProcSet ExtGState Pattern]
 	init: func [ spec ][
 	    foreach s spec [
 		if word? s [ s: get s ]
@@ -600,6 +926,12 @@ context [
 		    ]
 		    /Shading [
 			Shading: s
+		    ]
+		    /Pattern [
+			Pattern: s
+		    ]
+		    /ExtGState [
+			ExtGState: s
 		    ]
 		]
 	    ]
@@ -707,7 +1039,54 @@ context [
 	 To see an example of how to use the object, see pdf-lib/test as an example}
     ][
 	context [
+	    like?: func [
+		{Returns true if all values are the same. When comparing referenced objects they are 
+		 supposed to be like if references the same object.
+		 Traverses all blocks recursevely to all levels.}
+		 a 
+		 b
+		 /local a-names b-names a-val b-val a-pos b-pos x
+	    ][
+		if :a == :b [ return true ]
+		unless (type? :a) = type? :b [ return false ]
+		unless block? :a [ a: reduce [ :a ]  b: reduce [ :b ] ]
 
+		loop length? a [
+		    a-val: first+ a
+		    b-val: first+ b
+		    unless (type? :a-val) = type? :b-val [ return false ]
+		    switch/default type? :a-val compose [
+			(object!) [
+			    a-val: third :a-val
+			    b-val: third :b-val
+			    foreach x [ stream-string: obj-position: string: ] [
+				if a-pos: find/skip a-val x 2 [
+				    remove/part a-pos 2
+				]
+				if b-pos: find/skip b-val x 2 [
+				    remove/part b-pos 2
+				]
+			    ]
+			    unless like? a-val b-val [ return false ]
+			]
+			(block!) [
+			    unless like? :a-val :b-val [ return false ]
+			]
+			(function!) [
+			    unless all [
+				(second :a-val ) = (second :b-val)
+				like? (third :a-val )  (third :b-val)
+			    ][ return false ]
+			]
+		    ][
+			unless :a-val = :b-val [
+			    return false
+			]
+		    ]
+		]
+		true
+	    ]
+			
 	    obj-list: copy []
 	    
 	    add-obj: func [ obj ][
@@ -741,7 +1120,7 @@ context [
 		xref: make-obj xref-obj!  [ obj-list ]
 		trailer: make-obj trailer-dict! [ xref Root ]
 
-		trailer/Size: length? obj-list
+		trailer/Size: -1 + length? obj-list
 
 		check
 		
@@ -756,7 +1135,7 @@ context [
 
 		prepare
 
-		string: copy "%PDF-1.6^/"
+		string: copy "%PDF-1.6^/%öäüß^/"
 		foreach o obj-list [
 		    o/obj-position: length? string
 		    append string o/to-string obj-list
@@ -765,14 +1144,20 @@ context [
 	    ]
 
 	    make-obj: func [
+		{Makes the object and then checks if an identical object already exists in the 
+		list of objects. If it does, then return that other, else return the one just created}
 		obj [object!] {Object prototype, decides how the specifiation should be treated}
 		specification [block!] {A list of something that rather liberally will get parsed}
 		/root {Mark that this object is the file's catalog to be referenced as root}
 		/local o
 	    ][
-		append obj-list o: make obj [ ]
+		o: make obj [ ]
 		o/init specification
 		if root [ set-root o ]
+		foreach x obj-list [
+		    if  like? x o [ return x ]
+		]
+		append obj-list o
 		o
 	    ]
 	]
@@ -841,7 +1226,7 @@ context [
 		0 100x100  red
 		0 200x0    green
 		0 255x200  blue
-		3 0x0   black ; flag tells which coordinate of last triangle to drop
+		3 0x100   black ; flag tells which coordinate of last triangle to drop
 	    ]
 	    cont: doc/make-obj base-stream! compose [
 		1 0.1 -0.15 0.9 -50 100 cm
@@ -861,6 +1246,166 @@ context [
 	    catalog: doc/make-obj/root catalog-dict! [ pages ]
 
 	    write %triangle.pdf doc/to-string
+	    true
+	] [
+	    err: disarm err
+	    ? err
+	]
+    ]
+    test-shading-axial: func [
+    ][
+	if error? err: try [
+	    
+	    doc: prepare-pdf
+
+	    fun: doc/make-obj make function-poly-dict! [
+		C0: [ 0 0 0 ]
+		C1: [ 1 1 0.3]
+		N: 1
+	    ] []
+
+	    fun2: doc/make-obj function-interp-dict! [
+		BitsPerSample: 8
+		one-input-dimension 3 [
+		    red green blue  mint tan oldrab snow brown coal yellow
+		] 
+	    ]
+
+	    axial: doc/make-obj shading-axial-dict! [
+		Function: fun 
+		Domain: [ 0 1 ] 
+		Extend: [ true false ]
+		from-to 50x0 240x00
+	    ]
+	    axial2: doc/make-obj shading-axial-dict! [
+		Function: fun2
+		Domain: [ 0 1 ] 
+		Extend: [ false false ]
+		from-to 0x100 90x10
+	    ]
+	    bullet: doc/make-obj shading-radial-dict! [
+		Function: fun2
+		Domain: [ 0 1 ] 
+		Extend: [ false true ]
+		from 50x50 0
+		to 80x50 35
+	    ]
+
+
+	    shades: doc/make-obj shadings-dict! [ /axi axial /axi2 axial2 /bullet bullet ]
+
+	    pattern: doc/make-obj shading-pattern-dict! [ bullet ]
+
+	    patterns: doc/make-obj patterns-dict! [ /P1 pattern ]
+
+	    resource: doc/make-obj resources-dict! [ shades patterns ]
+
+	    cont: doc/make-obj base-stream! compose [
+		q
+		    000x100 m
+		    100x0 l
+		    155x200 l h
+		    W n
+		    /axi sh
+		Q
+		0.3 0.3 0.3 rg
+		0 0.5 0.8 RG
+		4 w
+		000x100 m
+		100x0 l
+		155x200 l h
+		S
+		q
+		    1 0 0 1 70x20 cm
+		    q
+			0x100 m
+			100x0 l
+			155x200 l h
+			W n
+			/axi2 sh
+		    Q
+		    (violet) RG
+		    4 w
+		    0x100 m
+		    100x0 l
+		    155x200 l h
+		    S
+		Q
+		q
+		    1 0 0 1 200x20 cm
+		    q
+			0x0 m
+			100x0 l
+			100x100 l 
+			0x100 l h
+			W n
+			/bullet sh
+		    Q
+		    (coal) RG
+		    4 w
+		    0x0 m
+		    100x0 l
+		    100x100 l 
+		    0x100 l h
+		    S
+		Q
+		1 0 0 1 -50x0 cm
+		0.8 G
+		/Pattern cs
+		/P1 scn
+		5 w
+		100x100 m
+		250x50 l
+		50x0 l h
+		B
+		/Pattern CS ; Here there is an error in evince that does not render this as the pattern
+		/P1 SCN ; However ghostscript does
+		10 w
+		100x0 m
+		100x150 l
+		S
+	    ]
+
+	    page: doc/make-obj page-dict! [ resource cont ]
+	    page/set-mediaBox [ 0 0 400 300 ]
+	    pages: doc/make-obj pages-dict! [ page ]
+	    catalog: doc/make-obj/root catalog-dict! [ pages ]
+
+	    write %shadings.pdf doc/to-string
+	    true
+	] [
+	    err: disarm err
+	    ? err
+	]
+    ]
+    test-graphic-state: func [
+    ][
+	if error? err: try [
+	    
+	    doc: prepare-pdf
+
+	    extGS: doc/make-obj ext-graphic-state-dict! [ +CA: 0.5 ]
+	    extGStates: doc/make-obj extGStates-dict! [ /half-alpha extGS ]
+
+	    resource: doc/make-obj resources-dict! [ extGStates ]
+
+	    cont: doc/make-obj base-stream! compose [
+		10 w 
+		(black) RG 
+		10x30 m 100x30 l s
+		(red) RG
+		0x0 m 100x100 l s
+		(blue) RG
+		/half-alpha gs
+		100x0 m 0x100 l s
+	    ]
+
+	    page: doc/make-obj page-dict! [ resource cont ]
+	    page/set-mediaBox [ 0 0 400 300 ]
+	    pages: doc/make-obj pages-dict! [ page ]
+	    catalog: doc/make-obj/root catalog-dict! [ pages ]
+
+	    write %test-gs.pdf doc/to-string
 	    true
 	] [
 	    err: disarm err
