@@ -1,5 +1,15 @@
 # pdf-export Library for exporting view faces to pdf
 
+## Examples
+
+### Single face with draw commands
+<img src='doc/images/geometries-II.png'>
+[File generated with face-to-pdf](tests/geometries-II.pdf)
+
+### Subfaces with some draw commands
+<img src='doc/images/sm-compiler-example.png'> 
+Results in the [PDF file](doc/images/sm-compiler-example.pdf).
+
 
 ## Usage
 ### Quick start

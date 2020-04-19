@@ -62,7 +62,7 @@ do*: func [ blk /local e ][
     ]
 ]
 
-do %linalg-r/linalg.r
+do %linalg.r
 
 context [
     
