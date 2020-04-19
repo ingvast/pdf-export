@@ -1,5 +1,6 @@
 # pdf-export Library for exporting view faces to pdf
 
+
 ## Usage
 ### Quick start
 Create the face to export
@@ -25,14 +26,21 @@ You can export any face such as `bo` in the example.
 
 Writing more than one page is not yet implemented.
 
+## Alternative loading
+An alternative way of loading only the main interface function `face-to-pdf`
+```do/args %face-to-pdf-lib.r 'face-to-pdf```
+Thereafter processing can be done as
+
+```write %vface.pdf face-to-pdf vface```
+
 ## Exceptions, known bugs
+
+* `face/pane` as functions are not implemented.
 
 ### File related
 * Only PDF standard fonts are used
   There is a conversion table in `face-to-pdf-lib/font-translations` that can be used to
   translate the font used in view int the correpsonding pdf font.
-* When using draw without setting a drawing color, REBOL automatically chooses some color different from 
-  the background.  That transformation is not right.
 * Each PDF file only contain one page with one face.
 * The size of the PDF is set to the size of the face.
 * No compression is done, so large images will result in large files.
@@ -46,11 +54,17 @@ Writing more than one page is not yet implemented.
 * `shadow` is not implemented. (partly becauyse I cannot figure out what it does).
 
 ### Draw related
+* When using draw without setting a drawing color, REBOL automatically chooses some color different from 
+  the background.  That transformation is not right.
 * The draw pen cannot be an image
 * Images can have linear transformations, so the general method of setting all four corners of an image
   does not render correctly.
 * Spline not implemented
 * Nothing from  Shape subdialect is implemented
+
+### Standard compliance
+* When resulting pdf file is checked with [veraPDF](http://veraPDF.org) a few
+  warnings/errors are detected. However, none seemingly critical.
 
 
 

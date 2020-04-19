@@ -41,7 +41,7 @@ view/new  layout  [
 do/args %../face-to-pdf-lib.r 'face-to-pdf 
 
 
-write %draw-texts.pdf face-to-pdf p
+write/binary %draw-texts.pdf face-to-pdf p
 
 halt
 

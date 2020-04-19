@@ -1135,7 +1135,7 @@ context [
 
 		prepare
 
-		string: copy "%PDF-1.6^/"
+		string: copy "%PDF-1.6^/%öäüß^/"
 		foreach o obj-list [
 		    o/obj-position: length? string
 		    append string o/to-string obj-list

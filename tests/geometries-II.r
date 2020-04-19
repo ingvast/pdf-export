@@ -262,8 +262,8 @@ if error? err: try [
     ? err
     make error! {Error somewhere}
 ]
-print "hit escape to get prompt"
 
+print "hit escape to get prompt"
 
 wait none
 

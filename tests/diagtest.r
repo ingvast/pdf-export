@@ -23,7 +23,7 @@ do/args %../face-to-pdf-lib.r 'face-to-pdf
 
 ;show-changed-vars
 
-write %diagtest.pdf face-to-pdf g
+write/binary %diagtest.pdf face-to-pdf g
 
 halt
 
