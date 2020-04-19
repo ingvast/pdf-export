@@ -38,7 +38,8 @@ Thereafter processing can be done as
 * `face/pane` as functions are not implemented.
 
 ### File related
-* Only PDF standard fonts are used
+* Only PDF standard fonts are used.
+
   There is a conversion table in `face-to-pdf-lib/font-translations` that can be used to
   translate the font used in view int the correpsonding pdf font.
 * Each PDF file only contain one page with one face.
@@ -55,10 +56,10 @@ Thereafter processing can be done as
 
 ### Draw related
 * When using draw without setting a drawing color, REBOL automatically chooses some color different from 
-  the background.  That transformation is not right.
+  the background.  I have put some effort to find what transformation it does without success.
 * The draw pen cannot be an image
 * Images can have linear transformations, so the general method of setting all four corners of an image
-  does not render correctly.
+  uses the first three corners and makes an affine transformation of the whole image.
 * Spline not implemented
 * Nothing from  Shape subdialect is implemented
 
@@ -77,7 +78,7 @@ the latter calls the former.
 by `pdf-lib.r`.
 
 Test files are found under `test` directory. Simply execute them from a rebol prompt and they should 
-show some graphics and leave a pdf fil
+show some graphics and leave a pdf file.
 
 
 ## External libraries used
