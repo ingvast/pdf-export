@@ -3,11 +3,11 @@
 ## Examples
 
 ### Single face with draw commands
-<img src='doc/images/geometries-II.png'>
-[File generated with face-to-pdf](tests/geometries-II.pdf)
+![alt](doc/images/geometries-II.png)
+[File generated with face-to-pdf](doc/images/geometries-II.pdf)
 
 ### Subfaces with some draw commands
-<img src='doc/images/sm-compiler-example.png'> 
+![Here should be a png image](doc/images/sm-compiler-example.png) 
 Results in the [PDF file](doc/images/sm-compiler-example.pdf).
 
 
