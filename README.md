@@ -1,5 +1,6 @@
 # pdf-export Library for exporting view faces to pdf
 
+
 ## Examples
 
 ### Single face with draw commands
@@ -8,7 +9,10 @@
 
 ### Subfaces with some draw commands
 ![Here should be a png image](doc/images/sm-compiler-example.png) 
-Results in the [PDF file](doc/images/sm-compiler-example.pdf).
+Results in the [PDF file](doc/images/sm-compiler-example.pdf).  Do not look at the pdf using Github
+since it does not render the pdf correctly.  Use your favourite pdf viewer.
+Observe! Two of these subfaces are functions (for implementing lists). Those are not implemented in
+pdf-export.
 
 
 ## Usage
@@ -93,4 +97,7 @@ show some graphics and leave a pdf file.
 
 ## External libraries used
   * `printf.r` from the rebol script library. Thanks to Jamie and Ladislav.
+
+## License
+MIT license, see specific file.
 
